@@ -23,11 +23,14 @@ THE SOFTWARE.
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
+using System.Security.Cryptography;
 
 using Brunet;
 using Brunet.Security;
 using Brunet.Applications;
 using Brunet.Collections;
+using Brunet.Concurrent;
 using Brunet.Symphony;
 using Brunet.Security.PeerSec.Symphony;
 
@@ -42,72 +45,88 @@ namespace Ipop.SocialVPN {
 
   public class SocialNode : ManagedIpopNode {
 
-    public const string DNSSUFFIX = "sdns";
+    public const string CONFIGPATH = "social.config";
+
+    protected readonly WriteOnce<SocialUser> _user;
 
     protected ImmutableDictionary<string, SocialUser> _friends;
 
-    protected ImmutableDictionary<string, string> _aliases;
+    protected readonly RSACryptoServiceProvider _rsa;
 
-    protected readonly SocialUser _local_user;
-
-    public StructuredNode Node {
-      get { return AppNode.Node; }
-    }
+    protected readonly string _address;
 
     protected readonly Brunet.Connections.ManagedConnectionOverlord _managed_co;
 
-    public SocialUser LocalUser {
-      get { return _local_user; }
-    }
-
-    public IDictionary<string, SocialUser> Friends {
-      get { return _friends; }
+    public StructuredNode Node {
+      get { return AppNode.Node; }
     }
 
     public SymphonySecurityOverlord Bso {
       get { return AppNode.SymphonySecurityOverlord; }
     }
 
+    public SocialUser LocalUser {
+      get { return _user.Value; }
+    }
+
+    public IDictionary<string, SocialUser> Friends {
+      get { return _friends; }
+    }
+
+    public string Address {
+      get { return _address; }
+    }
+
+    public string IP {
+      get { return _marad.LocalIP; }
+    }
+
     public SocialNode(NodeConfig brunetConfig, IpopConfig ipopConfig,
-                      string certificate) : base(brunetConfig, ipopConfig) {
-
+      RSACryptoServiceProvider rsa) 
+      : base(brunetConfig, ipopConfig) {
       _friends = ImmutableDictionary<string, SocialUser>.Empty;
-      _aliases = ImmutableDictionary<string, string>.Empty;
-      _local_user = new SocialUser(certificate);
-      _local_user.IP = _marad.LocalIP;
-      _marad.AddDnsMapping(_local_user.Alias, _local_user.IP, true);
-
-      Bso.CertificateHandler.AddCACertificate(_local_user.GetCert().X509);
-      Bso.CertificateHandler.AddSignedCertificate(_local_user.GetCert().X509);
+      _rsa = rsa;
+      _address = AppNode.Node.Address.ToString();
+      _user = new WriteOnce<SocialUser>();
       _managed_co = new Brunet.Connections.ManagedConnectionOverlord(Node);
       Node.AddConnectionOverlord(_managed_co);
     }
 
-    private bool Verify(SocialUser user) {
-      if(_friends.ContainsKey(user.Address)) {
-        throw new Exception("Verify failure, address already exists");
+    public void SetUid(string uid, string pcid) {
+      string country = "US";
+      string version = "0.4";
+      string name = uid;
+
+      if(pcid == null || pcid == String.Empty) {
+        pcid = System.Net.Dns.GetHostName();
       }
 
-      if(_aliases.ContainsKey(user.Alias)) {
-        RemoveFriend(_aliases[user.Alias]);
-      }
+      CertificateMaker cm = new CertificateMaker(country, version, pcid,
+                                                 name, uid, _rsa, 
+                                                 this.Address);
+      Certificate cert = cm.Sign(cm, _rsa);
+      string certificate = Convert.ToBase64String(cert.X509.RawData);
+      SocialUser user = new SocialUser(certificate, this.IP, null);
+      _user.Value = user;
 
-      return true;
+      Bso.CertificateHandler.AddCACertificate(user.X509);
+      Bso.CertificateHandler.AddSignedCertificate(user.X509);
     }
 
-    public SocialUser AddFriend(string cert, string uid, string ip) {
-      SocialUser user = new SocialUser(cert);
+    public SocialUser AddFriend(string address, string cert, string uid, 
+      string ip) {
 
-      Verify(user);
+      if(_friends.ContainsKey(address)) {
+        throw new Exception("Address already exists");
+      }
 
-      Address addr = AddressParser.Parse(user.Address);
-      Bso.CertificateHandler.AddCACertificate(user.GetCert().X509);
+      Address addr = AddressParser.Parse(address);
+      string new_ip = _marad.AddIPMapping(ip, addr);
+      SocialUser user = new SocialUser(cert, new_ip, null);
+
+      Bso.CertificateHandler.AddCACertificate(user.X509);
       _managed_co.Set(addr);
-      user.IP = _marad.AddIPMapping(ip, addr);
-      _marad.AddDnsMapping(user.Alias, user.IP, true);
-
-      _friends = _friends.InsertIntoNew(user.Address, user);
-      _aliases = _aliases.InsertIntoNew(user.Alias, user.Address);
+      _friends = _friends.InsertIntoNew(address, user);
 
       return user;
     }
@@ -115,14 +134,11 @@ namespace Ipop.SocialVPN {
     public void RemoveFriend(string address) {
       SocialUser user = _friends[address];
       Address addr = AddressParser.Parse(user.Address);
-      _managed_co.Unset(addr);
+      _managed_co.Unset(addr);
       _marad.RemoveIPMapping(user.IP);
-      _marad.RemoveDnsMapping(user.Alias, true);
 
       ImmutableDictionary<string, SocialUser> old;
       _friends = _friends.RemoveFromNew(address, out old);
-      ImmutableDictionary<string, string> old2;
-      _aliases = _aliases.RemoveFromNew(user.Alias, out old2);
     }
 
     public void Block(string address) {
@@ -135,16 +151,14 @@ namespace Ipop.SocialVPN {
       _marad.AddIPMapping(user.IP, AddressParser.Parse(address));
     }
 
-    public void AddDnsMapping(string alias, string ip) {
-      _marad.AddDnsMapping(alias, ip, false);
-    }
-
-    public void RemoveDnsMapping(string alias) {
-      _marad.RemoveDnsMapping(alias, false);
-    }
-
     public bool IsAllowed(string address) {
       return _marad.mcast_addr.Contains(AddressParser.Parse(address));
+    }
+
+    public void Close() {
+      Shutdown.Exit();
+      System.Threading.Thread.Sleep(1000);
+      Environment.Exit(0);
     }
 
     public static SocialNode CreateNode() {
@@ -152,14 +166,32 @@ namespace Ipop.SocialVPN {
       SocialConfig social_config;
       NodeConfig node_config;
       IpopConfig ipop_config;
+      RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
 
-      byte[] certData = SocialUtils.ReadFileBytes("local.cert");
-      string certb64 = Convert.ToBase64String(certData);
-      social_config = Utils.ReadConfig<SocialConfig>("social.config");
+      if(File.Exists(CONFIGPATH)) {
+        social_config = Utils.ReadConfig<SocialConfig>(CONFIGPATH);
+      }
+      else {
+        social_config = SocialUtils.CreateConfig();
+      }
+
       node_config = Utils.ReadConfig<NodeConfig>(social_config.BrunetConfig);
       ipop_config = Utils.ReadConfig<IpopConfig>(social_config.IpopConfig);
 
-      SocialNode node = new SocialNode(node_config, ipop_config, certb64);
+      if(File.Exists(node_config.Security.KeyPath)) {
+        rsa.ImportCspBlob(SocialUtils.ReadFileBytes(
+          node_config.Security.KeyPath));
+      }
+      else if(!File.Exists(node_config.Security.KeyPath) || 
+        node_config.NodeAddress == null) {
+        node_config.NodeAddress = Utils.GenerateAHAddress().ToString();
+        Utils.WriteConfig(social_config.BrunetConfig, node_config);
+
+        SocialUtils.WriteToFile(rsa.ExportCspBlob(true), 
+          node_config.Security.KeyPath);
+      }
+
+      SocialNode node = new SocialNode(node_config, ipop_config, rsa);
 #if !SVPN_NUNIT
       SocialDnsManager sdm = new SocialDnsManager(node);
 
@@ -168,8 +200,7 @@ namespace Ipop.SocialVPN {
 
       JabberNetwork jabber = new JabberNetwork(social_config.JabberID, 
         social_config.JabberPass, social_config.JabberHost, 
-        social_config.JabberPort, node.LocalUser.Fingerprint,
-        node.LocalUser.Address);
+        social_config.JabberPort);
 
       manager.Register("jabber", jabber);
 
