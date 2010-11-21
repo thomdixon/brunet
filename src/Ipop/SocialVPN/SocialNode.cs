@@ -174,7 +174,7 @@ namespace Ipop.SocialVPN {
       Environment.Exit(0);
     }
 
-    public void HandleShutdown(object state) {
+    protected void HandleShutdown(object state) {
       IpopNode node = state as IpopNode;
       node.Shutdown.Exit();
     }
@@ -222,6 +222,11 @@ namespace Ipop.SocialVPN {
         social_config.JabberPort);
 
       manager.Register("jabber", jabber);
+
+      if(social_config.AutoLogin) {
+        manager.Login("jabber", social_config.JabberID, 
+          social_config.JabberPass);
+      }
 
       HttpInterface http = new HttpInterface(social_config.HttpPort);
       http.ProcessEvent += manager.ProcessHandler;
