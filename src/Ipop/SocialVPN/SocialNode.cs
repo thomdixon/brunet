@@ -177,7 +177,7 @@ namespace Ipop.SocialVPN {
           if(pel.InternalEL is UdpEdgeListener) {
             NatTAs nat = pel.InternalEL.LocalTAs as NatTAs;
             nat.GetEnumerator();
-            Console.WriteLine("Nat type {0}", nat.NatType);
+            result = nat.NatType;
             break;
           }
         }
