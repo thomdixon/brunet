@@ -101,19 +101,6 @@ namespace Brunet.Symphony {
     protected TimeSpan _current_retry_interval;
     protected DateTime _last_retry_time;
 
-    /** Checks logging is enabled. */
-    protected int _log_enabled = -1;
-    protected bool LogEnabled {
-      get {
-        lock(_sync) {
-          if (_log_enabled == -1) {
-            _log_enabled = ProtocolLog.SCO.Enabled ? 1 : 0;
-          }
-          return (_log_enabled == 1);
-        }
-      }
-    }
-    
     //When we last tried to optimize shortcut.
     protected DateTime _last_optimize_time;
     public static readonly int OPTIMIZE_DELAY = 300;//300 seconds
@@ -261,16 +248,20 @@ namespace Brunet.Symphony {
 
     protected bool NeedBypass {
       get {
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO, 
                             String.Format("Checking if need bypass"));
         }
+#endif
         lock(_sync) {
           if (_need_bypass != -1) {
-            if (LogEnabled) {
+#if TRACE
+            if (ProtocolLog.SCO.Enabled) {
               ProtocolLog.Write(ProtocolLog.SCO, 
                                 String.Format("Returning: {0}.", (_need_bypass == 1)));
             }
+#endif
             return (_need_bypass == 1);
           }
 
@@ -279,16 +270,20 @@ namespace Brunet.Symphony {
               continue;
             }
 
-            if (LogEnabled) {
+#if TRACE
+            if (ProtocolLog.SCO.Enabled) {
               ProtocolLog.Write(ProtocolLog.SCO, String.Format("Returning: false."));
             }
+#endif
             _need_bypass = 0;
             return false;
           }
 
-          if (LogEnabled) {
+#if TRACE
+          if (ProtocolLog.SCO.Enabled) {
             ProtocolLog.Write(ProtocolLog.SCO, String.Format("Returning: true."));
           }
+#endif
           _need_bypass = 1;
           return true;
         }
@@ -481,11 +476,13 @@ namespace Brunet.Symphony {
       Address.SetClass(target_int, _node.Address.Class);
       Address start = new AHAddress(target_int);
 
-      if (LogEnabled) {
+#if TRACE
+      if (ProtocolLog.SCO.Enabled) {
         ProtocolLog.Write(ProtocolLog.SCO, 
                           String.Format("SCO local: {0}, Selecting shortcut to create close to start: {1}.", 
                                         _node.Address, start));
       }
+#endif
       //make a call to the target selector to find the optimal
       _target_selector.ComputeCandidates(start, (int) Math.Ceiling(logk), CreateShortcutCallback, null);
     }
@@ -515,19 +512,23 @@ namespace Brunet.Symphony {
         ISender send = null;
         if (start.Equals(min_target)) {
           //looks like the target selector simply returned our random address
-          if (LogEnabled) {
+#if TRACE
+          if (ProtocolLog.SCO.Enabled) {
             ProtocolLog.Write(ProtocolLog.SCO, 
                               String.Format("SCO local: {0}, Connecting (shortcut) to min_target: {1} (greedy), random_target: {2}.", 
                                             _node.Address, min_target, start));
           }
+#endif
           //use a greedy sender
           send = new AHGreedySender(_node, min_target);
         } else {
-          if (LogEnabled) {
+#if TRACE
+          if (ProtocolLog.SCO.Enabled) {
             ProtocolLog.Write(ProtocolLog.SCO, 
                               String.Format("SCO local: {0}, Connecting (shortcut) to min_target: {1} (exact), random_target: {2}.", 
                                   _node.Address, min_target, start));
           }
+#endif
           //use exact sender
           send = new AHExactSender(_node, min_target);
         }
@@ -540,11 +541,13 @@ namespace Brunet.Symphony {
      * 
      */
     protected void CreateBypass() {
-      if (LogEnabled) {
+#if TRACE
+      if (ProtocolLog.SCO.Enabled) {
         ProtocolLog.Write(ProtocolLog.SCO, 
                           String.Format("SCO local: {0}, Selecting bypass to create.", 
                                         _node.Address));
       }
+#endif
       double logk = Math.Log( (double)_node.NetworkSize, 2.0 );
       _target_selector.ComputeCandidates(_node.Address, (int) Math.Ceiling(logk), CreateBypassCallback, null);
     }
@@ -552,11 +555,13 @@ namespace Brunet.Symphony {
     protected void CreateBypassCallback(Address start, SortedList score_table, Address current) {
       if (score_table.Count > 0) {
         Address min_target = (Address) score_table.GetByIndex(0);
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO, 
                             String.Format("SCO local: {0}, Connecting (bypass) to min_target: {1}", 
                                           _node.Address, min_target));
         }
+#endif
         ConnectTo(min_target, STRUC_BYPASS);
       }
     }
@@ -573,11 +578,13 @@ namespace Brunet.Symphony {
         _last_optimize_time = now;
       }
 
-      if (LogEnabled) {
+#if TRACE
+      if (ProtocolLog.SCO.Enabled) {
         ProtocolLog.Write(ProtocolLog.SCO, 
                           String.Format("SCO local: {0}, Selcting a random shortcut to optimize.", 
                                         _node.Address));
       }
+#endif
       double logk = Math.Log( (double)_node.NetworkSize, 2.0 );  
       
       //Get a random shortcut:
@@ -606,28 +613,34 @@ namespace Brunet.Symphony {
         string token = sc.State.PeerLinkMessage.Token;
         // Second half of the token is the random target for the shortcut.
         Address random_target = AddressParser.Parse(token.Substring(token.Length/2));
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO, 
                             String.Format("SCO local: {0}, Optimizing shortcut connection: {1}, random_target: {2}.",
                                           _node.Address, sc.Address, random_target));
         }
+#endif
 
         _target_selector.ComputeCandidates(random_target, (int) Math.Ceiling(logk), 
                                            CheckShortcutCallback, sc.Address);
       } else {
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO,
                             String.Format("SCO local: {0}, Cannot find a shortcut to optimize.", 
                                           _node.Address));
         }
+#endif
       }
 
       //also optimize the bypass connections.
-      if (LogEnabled) {
+#if TRACE
+      if (ProtocolLog.SCO.Enabled) {
         ProtocolLog.Write(ProtocolLog.SCO, 
                           String.Format("SCO local: {0}, Selecting a bypass to optimize.", 
                                         _node.Address));
       }
+#endif
       _target_selector.ComputeCandidates(_node.Address, (int) Math.Ceiling(logk), CheckBypassCallback, null);
     }
     
@@ -638,11 +651,13 @@ namespace Brunet.Symphony {
      * @param sc_address address of the current connection.
      */
     protected void CheckShortcutCallback(Address random_target, SortedList score_table, Address sc_address) {
-      if (LogEnabled) {
+#if TRACE
+      if (ProtocolLog.SCO.Enabled) {
         ProtocolLog.Write(ProtocolLog.SCO, 
                           String.Format("SCO local: {0}, Checking shortcut optimality: {1}.", 
                                 _node.Address, sc_address));
       }
+#endif
       
       int max_rank = (int) Math.Ceiling(0.2*score_table.Count);
       if (!IsConnectionOptimal(sc_address, score_table, max_rank)) {
@@ -664,11 +679,13 @@ namespace Brunet.Symphony {
         }
         
         if (to_trim != null) {
-          if (LogEnabled) {
+#if TRACE
+          if (ProtocolLog.SCO.Enabled) {
             ProtocolLog.Write(ProtocolLog.SCO, 
                               String.Format("SCO local: {0}, Trimming shortcut : {1}, min_target: {2}.",
                                             _node.Address, to_trim.Address, min_target));
           }
+#endif
           lock(_sync) {
             double total_secs = (DateTime.UtcNow - to_trim.CreationTime).TotalSeconds;
             _sum_con_lifetime += total_secs;
@@ -677,11 +694,13 @@ namespace Brunet.Symphony {
           to_trim.Close(_node.Rpc, String.Empty);
         }
       } else {
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO,
                             String.Format("SCO local: {0}, Shortcut is optimal: {1}.", 
                                           _node.Address, sc_address));
         }
+#endif
       }
     }
     
@@ -692,7 +711,7 @@ namespace Brunet.Symphony {
      * @param bp_address address of the current connection (nullable).
      */
     protected void CheckBypassCallback(Address start, SortedList score_table, Address bp_address) {
-      if (LogEnabled) {
+      if (ProtocolLog.SCO.Enabled) {
         ProtocolLog.Write(ProtocolLog.SCO, 
                           String.Format("SCO local: {0}, Checking bypass optimality.", 
                                         _node.Address));
@@ -711,21 +730,25 @@ namespace Brunet.Symphony {
       foreach (Connection bp in bypass_cons) {
         if (!IsConnectionOptimal(bp.Address, score_table, max_rank)) {
           Address min_target = (Address) score_table.GetByIndex(0);
-          if (LogEnabled) {
+#if TRACE
+          if (ProtocolLog.SCO.Enabled) {
             ProtocolLog.Write(ProtocolLog.SCO, 
                               String.Format("SCO local: {0}, Trimming bypass : {1}, min_target: {2}.", 
                                             _node.Address, bp.Address, min_target));
           }
+#endif
           lock(_sync) {
             double total_secs = (DateTime.UtcNow - bp.CreationTime).TotalSeconds;
             _sum_con_lifetime += total_secs;
             _trim_count++;
           }
           bp.Close(_node.Rpc, String.Empty);
-        } else if (LogEnabled) {
+#if TRACE
+        } else if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO,
               String.Format("SCO local: {0}, Bypass is optimal: {1}.",
                 _node.Address, bp));
+#endif
         }
       }
     }
@@ -744,11 +767,13 @@ namespace Brunet.Symphony {
      */
     protected bool IsConnectionOptimal(Address curr_address, SortedList score_table, int max_rank) {
       if (score_table.Count == 0) {
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO, 
                             String.Format("SCO local: {0}, Not sufficient scores available to determine optimality: {1}.", 
                                           _node.Address, curr_address));
         }
+#endif
         return true;
       }
             
@@ -756,11 +781,13 @@ namespace Brunet.Symphony {
       bool doubtful = false; //if there is doubt on optimality of this connection.
       int curr_rank = score_table.IndexOfValue(curr_address);
       if (curr_rank == -1) {
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO, 
                             String.Format("SCO local: {0}, No score available for current: {1}.", 
                                           _node.Address, curr_address));
         }
+#endif
         
         //doubtful case
         doubtful = true;
@@ -770,22 +797,24 @@ namespace Brunet.Symphony {
       } else if (curr_rank <= max_rank) {
         //not the minimum, but still in top percentile.
         double penalty = (double) score_table.GetKey(curr_rank)/(double) score_table.GetKey(0);
-        if (LogEnabled) {
+#if TRACE
+        if (ProtocolLog.SCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.SCO, 
                             String.Format("SCO local: {0}, Penalty for using current: {1} penalty: {2}).", 
                                           _node.Address, curr_address, penalty));
         }
+#endif
 
         //we allow for 10 percent penalty for not using the optimal
         if (penalty < 1.1 ) {
           optimal = true;
         }
-      } else {
-        if (LogEnabled) {        
-          ProtocolLog.Write(ProtocolLog.SCO, 
-                            String.Format("SCO local: {0}, Current: {1} too poorly ranked: {2}.", 
-                                  _node.Address, curr_address, curr_rank));
-        }
+#if TRACE
+      } else if (ProtocolLog.SCO.Enabled) {        
+        ProtocolLog.Write(ProtocolLog.SCO, 
+                          String.Format("SCO local: {0}, Current: {1} too poorly ranked: {2}.", 
+                                _node.Address, curr_address, curr_rank));
+#endif
       }
 
       /** 
@@ -821,9 +850,11 @@ namespace Brunet.Symphony {
           _doubts_table.Remove(curr_address);          
         }
       } //end of lock
-      if (LogEnabled) {
+#if TRACE
+      if (ProtocolLog.SCO.Enabled) {
         ProtocolLog.Write(ProtocolLog.SCO, log);
       }
+#endif
       return optimal;
     }
 

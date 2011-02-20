@@ -829,11 +829,6 @@ namespace Brunet.Connections
         RemoveHandler(e, null);
         throw;
       }
-      
-      if(ProtocolLog.Stats.Enabled) {
-        ProtocolLog.Write(ProtocolLog.Stats, String.Format(
-          "New Connection {0}|{1}", c, DateTime.UtcNow.Ticks));
-      }
       return cea;
     }
     /**
@@ -851,10 +846,6 @@ namespace Brunet.Connections
      */
     public Pair<ConnectionTableState, ConnectionTableState> AddUnconnected(Edge e)
     {
-      if(ProtocolLog.Stats.Enabled) {
-        ProtocolLog.Write(ProtocolLog.Stats, String.Format(
-          "Initial add to unconnected {0}|{1}", e, DateTime.UtcNow.Ticks));
-      }
       Converter<ConnectionTableState, ConnectionTableState> addunc =
         delegate(ConnectionTableState cts) {
           Connection c = cts.GetConnection(e);
@@ -942,11 +933,6 @@ namespace Brunet.Connections
           ProtocolLog.Write(ProtocolLog.Connections,
             String.Format("New Disconnection[{0}]: {1}, instant: {2}, con_life: {3} ", 
 			                    idx, c, now, con_life));
-        }
-
-        if(ProtocolLog.Stats.Enabled) {
-          ProtocolLog.Write(ProtocolLog.Stats, String.Format(
-            "Disconnection {0}|{1}", c, DateTime.UtcNow.Ticks));
         }
         SendEvent(DisconnectionEvent, cea);
         SendEvent(StateEvent, cea);

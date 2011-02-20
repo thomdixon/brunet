@@ -160,10 +160,9 @@ namespace Brunet.Connections
         _connection_state[con.Address] = MCState.Off;
       }
 
-      if(ProtocolLog.ManagedCO.Enabled) {
-        ProtocolLog.Write(ProtocolLog.ManagedCO, String.Format(
-                          "Disconnection: {0} at {1}",
-                          con, DateTime.UtcNow));
+      if(ProtocolLog.PolicyBasedCO.Enabled) {
+        ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
+                          "Disconnection: {0} at {1}", con, DateTime.UtcNow));
       }
       if(IsActive) {
         ConnectTo(con.Address);
@@ -179,10 +178,9 @@ namespace Brunet.Connections
         _connection_state[con.Address] = MCState.On;
       }
 
-      if(ProtocolLog.ManagedCO.Enabled) {
-        ProtocolLog.Write(ProtocolLog.ManagedCO, String.Format(
-                          "Connection: {0} at {1}",
-                          con, DateTime.UtcNow));
+      if(ProtocolLog.PolicyBasedCO.Enabled) {
+        ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
+                          "Connection: {0} at {1}", con, DateTime.UtcNow));
       }
     }
 
@@ -195,6 +193,10 @@ namespace Brunet.Connections
         _connection_state[addr] = MCState.Off;
       }
 
+      if(ProtocolLog.PolicyBasedCO.Enabled) {
+        ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
+                          "Set: {0} at {1}", addr, DateTime.UtcNow));
+      }
 
       if(IsActive) {
         ConnectTo(addr);
@@ -208,6 +210,11 @@ namespace Brunet.Connections
           return;
         }
         _connection_state.Remove(addr);
+      }
+
+      if(ProtocolLog.PolicyBasedCO.Enabled) {
+        ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
+                          "Unset: {0} at {1}", addr, DateTime.UtcNow));
       }
 
       DelayedRemove(addr);

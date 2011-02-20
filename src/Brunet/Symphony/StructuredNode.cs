@@ -309,7 +309,7 @@ namespace Brunet.Symphony
             e.Close();
           }
           catch(Exception x) {
-            if(ProtocolLog.NodeLog.Enabled)
+            if(ProtocolLog.Exceptions.Enabled)
               ProtocolLog.Write(ProtocolLog.Exceptions, String.Format(
                 "sys:link.Close({0}) threw: {1}", e, x));
             e.Close();

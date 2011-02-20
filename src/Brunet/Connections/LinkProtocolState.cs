@@ -393,19 +393,19 @@ namespace Brunet.Connections
         results.CloseAfterEnqueue();
         results.CloseEvent += this.LinkCloseHandler;
         RpcManager rpc = _node.Rpc;
-	if(ProtocolLog.LinkDebug.Enabled) {
-	  ProtocolLog.Write(ProtocolLog.LinkDebug, 
-			    String.Format("LPS target: {0} Invoking Start() over edge: {1}", _linker.Target, _e));
-	}
+        if(ProtocolLog.LinkDebug.Enabled) {
+          ProtocolLog.Write(ProtocolLog.LinkDebug, 
+          String.Format("LPS target: {0} Invoking Start() over edge: {1}", _linker.Target, _e));
+        }
         rpc.Invoke(_e, results, "sys:link.Start", MakeLM().ToDictionary() );
       }
       catch (Exception e) {
         //The Edge must have closed, move on to the next TA
-	if(ProtocolLog.LinkDebug.Enabled) {
-	  ProtocolLog.Write(ProtocolLog.LinkDebug, 
+        if(ProtocolLog.LinkDebug.Enabled) {
+          ProtocolLog.Write(ProtocolLog.LinkDebug, 
 			    String.Format("LPS target: {0} Start() over edge: {1}, hit exception: {2}", 
 					  _linker.Target, _e, e));
-	}
+        }
         Finish(Result.MoveToNextTA);
       }
     }
@@ -488,12 +488,11 @@ namespace Brunet.Connections
         results.CloseAfterEnqueue();
         results.CloseEvent += this.StatusCloseHandler;
         RpcManager rpc = _node.Rpc;
-	if (ProtocolLog.LinkDebug.Enabled) {
-	      ProtocolLog.Write(ProtocolLog.LinkDebug, 
-                String.Format(
-                  "LPS target: {0} Invoking GetStatus() over edge: {1}",
-                  _linker.Target, _e));
-	}
+        if (ProtocolLog.LinkDebug.Enabled) {
+          ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
+                "LPS target: {0} Invoking GetStatus() over edge: {1}",
+                _linker.Target, _e));
+        }
         /*
          * This could throw an exception if the Edge is closed
          */

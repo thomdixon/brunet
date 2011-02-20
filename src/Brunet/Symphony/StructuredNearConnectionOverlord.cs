@@ -96,19 +96,6 @@ namespace Brunet.Symphony {
     protected TimeSpan _current_retry_interval;
     protected DateTime _last_retry_time;
 
-    /** Checks logging is enabled. */
-    protected int _log_enabled = -1;
-    protected bool LogEnabled {
-      get {
-        lock(_sync) {
-          if (_log_enabled == -1) {
-            _log_enabled = ProtocolLog.SCO.Enabled ? 1 : 0;
-          }
-          return (_log_enabled == 1);
-        }
-      }
-    }
-    
     protected readonly DateTime _start_time;
 
     /*
@@ -182,10 +169,12 @@ namespace Brunet.Symphony {
         catch(Exception) { }
         
         if (rc == null || lc == null) {
-          if(LogEnabled) {
+#if TRACE
+          if(ProtocolLog.SCO.Enabled) {
             ProtocolLog.Write(ProtocolLog.SCO, String.Format(
               "{0}: No left or right neighbor (false)", our_addr));
           }
+#endif
           return false;
         }
         if (rc == lc) {
@@ -212,9 +201,11 @@ namespace Brunet.Symphony {
             AHAddress stat_addr = n_info.Address as AHAddress;
             if (stat_addr.IsBetweenFromLeft(our_addr, left_addr)) {
               //we are expecting a better candidate for left neighbor!
-              if(LogEnabled)
+#if TRACE
+              if(ProtocolLog.SCO.Enabled)
                 ProtocolLog.Write(ProtocolLog.SCO, String.Format(
                   "{0}: Better left: {1} (false)", our_addr, stat_addr));
+#endif
               return false;
             }
           }
@@ -224,15 +215,19 @@ namespace Brunet.Symphony {
             AHAddress stat_addr = n_info.Address as AHAddress;
             if (stat_addr.IsBetweenFromRight(our_addr, right_addr)) {
               //we are expecting a better candidate for left neighbor!
-              if(LogEnabled)
+#if TRACE
+              if(ProtocolLog.SCO.Enabled)
                 ProtocolLog.Write(ProtocolLog.SCO, String.Format(
                   "{0}: Better right: {1} (false)", our_addr, stat_addr));
+#endif
               return false;
             }
           }
-          if(LogEnabled)
+#if TRACE
+          if(ProtocolLog.SCO.Enabled)
             ProtocolLog.Write(ProtocolLog.SCO, String.Format(
               "{0}:  Returning (true)", our_addr));
+#endif
           return true;
         }
       }

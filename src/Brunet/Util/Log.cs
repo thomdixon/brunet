@@ -1,53 +1,67 @@
+/*
+Copyright (C) 2011 David Wolinsky <davidiw@ufl.edu>, University of Florida
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+  
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 using System.Diagnostics;
 using System.Threading;
 
 namespace Brunet.Util {
   public class ProtocolLog {
     private static object _sync = new object();
-    public static BooleanSwitch ConsoleLogEnable =
-        new BooleanSwitch("ConsoleLogEnable", "Log for unknown!");
-    public static BooleanSwitch Connections =
-      new BooleanSwitch("ConnectionTable", "Logs connections");
-    public static BooleanSwitch ConnectionTableLocks = 
-        new BooleanSwitch("ConnectionTableLocks", "Logs locks in the ConnectionTable");
-    public static BooleanSwitch OnDemandCO =
-        new BooleanSwitch("OnDemandCO", "On demand connections.");
-    public static BooleanSwitch Exceptions =
-        new BooleanSwitch("ERROR", "Logs exceptions");
-    public static BooleanSwitch NodeLog =
-        new BooleanSwitch("Node", "Log for node");
-    public static BooleanSwitch AnnounceLog =
-        new BooleanSwitch("Announce", "Log for AnnounceThread");
-    public static BooleanSwitch UdpEdge =
-        new BooleanSwitch("UdpEdge", "Log for UdpEdge and UdpEdgeListener");
-    public static BooleanSwitch NatHandler =
-        new BooleanSwitch("NatHandler", "Log for NatHandler");
-    public static BooleanSwitch SCO =
-        new BooleanSwitch("SCO", "Log for SCO");
-    public static BooleanSwitch Stats =
-        new BooleanSwitch("Stats", "Log for stats of the system");
-    public static BooleanSwitch LinkDebug =
-        new BooleanSwitch("LinkDebug", "Log for Link");
-    public static BooleanSwitch RelayEdge =
-        new BooleanSwitch("RelayEdge", "Log for RelayEdge");
-    public static BooleanSwitch LPS =
-        new BooleanSwitch("LPS", "Log for link protocol state");
-    public static BooleanSwitch Monitor =
-        new BooleanSwitch("Monitor", "Log the system monitor");
-    public static BooleanSwitch LocalCO =
-        new BooleanSwitch("LocalCO", "Log the local connection overlord");
-    public static BooleanSwitch EdgeClose =
-        new BooleanSwitch("EdgeClose", "The reason why an edge was closed.");
-    public static BooleanSwitch MapReduce =
-        new BooleanSwitch("MapReduce", "Log map-reduce computations");
-    public static BooleanSwitch ManagedCO =
-        new BooleanSwitch("ManagedCO", "User selected connections.");
-    public static BooleanSwitch Security =
-        new BooleanSwitch("Security", "Security logging.");
-    public static BooleanSwitch SecurityExceptions =
-        new BooleanSwitch("SecurityExceptions", "Security Handling Exception logging.");
-    public static BooleanSwitch Pathing =
-        new BooleanSwitch("Pathing", "Log for pathing");
+    public static EventBooleanSwitch ConsoleLogEnable =
+        new EventBooleanSwitch("ConsoleLogEnable", "Log for unknown!");
+    public static EventBooleanSwitch Connections =
+        new EventBooleanSwitch("ConnectionTable", "Logs connections");
+    public static EventBooleanSwitch ConnectionTableLocks = 
+        new EventBooleanSwitch("ConnectionTableLocks", "Logs locks in the ConnectionTable");
+    public static EventBooleanSwitch PolicyBasedCO =
+        new EventBooleanSwitch("PolicyBasedCO", "On demand connections.");
+    public static EventBooleanSwitch Exceptions =
+        new EventBooleanSwitch("ERROR", "Logs exceptions");
+    public static EventBooleanSwitch NodeLog =
+        new EventBooleanSwitch("Node", "Log for node");
+    public static EventBooleanSwitch UdpEdge =
+        new EventBooleanSwitch("UdpEdge", "Log for UdpEdge and UdpEdgeListener");
+    public static EventBooleanSwitch NatHandler =
+        new EventBooleanSwitch("NatHandler", "Log for NatHandler");
+    public static EventBooleanSwitch SCO =
+        new EventBooleanSwitch("SCO", "Log for SCO");
+    public static EventBooleanSwitch LinkDebug =
+        new EventBooleanSwitch("LinkDebug", "Log for Link");
+    public static EventBooleanSwitch RelayEdge =
+        new EventBooleanSwitch("RelayEdge", "Log for RelayEdge");
+    public static EventBooleanSwitch Monitor =
+        new EventBooleanSwitch("Monitor", "Log the system monitor");
+    public static EventBooleanSwitch LocalCO =
+        new EventBooleanSwitch("LocalCO", "Log the local connection overlord");
+    public static EventBooleanSwitch EdgeClose =
+        new EventBooleanSwitch("EdgeClose", "The reason why an edge was closed.");
+    public static EventBooleanSwitch MapReduce =
+        new EventBooleanSwitch("MapReduce", "Log map-reduce computations");
+    public static EventBooleanSwitch Security =
+        new EventBooleanSwitch("Security", "Security logging.");
+    public static EventBooleanSwitch SecurityExceptions =
+        new EventBooleanSwitch("SecurityExceptions", "Security Handling Exception logging.");
+    public static EventBooleanSwitch Pathing =
+        new EventBooleanSwitch("Pathing", "Log for pathing");
 
     public static bool CTL_enabled = false;
 

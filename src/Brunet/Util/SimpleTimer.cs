@@ -154,9 +154,7 @@ namespace Brunet.Util {
             timer._action.Start();
           }
         } catch (Exception e) {
-          //ProtocolLog is not in Brunet.Util:
-          Console.WriteLine(e);
-          //ProtocolLog.WriteIf(ProtocolLog.Exceptions, e.ToString());
+          ProtocolLog.WriteIf(ProtocolLog.Exceptions, e.ToString());
         }
 
         if(stopped) {

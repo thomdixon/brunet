@@ -152,7 +152,7 @@ namespace Brunet.Connections {
           return;
         }
 
-        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, String.Format(
+        ProtocolLog.WriteIf(ProtocolLog.PolicyBasedCO, String.Format(
               "Retrying: {0} at {1}", addr, DateTime.UtcNow));
         ConnectTo(addr);
       };
@@ -185,7 +185,7 @@ namespace Brunet.Connections {
                return;
         }
 
-        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, String.Format(
+        ProtocolLog.WriteIf(ProtocolLog.PolicyBasedCO, String.Format(
           "Closing because {0}: {1}", reason, con));
         con.Close(_node.Rpc, "Closed by request of CO");
       };

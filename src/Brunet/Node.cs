@@ -103,7 +103,6 @@ namespace Brunet
 
         _running = 0;
         _send_pings = 1;
-        _LOG = ProtocolLog.Monitor.Enabled;
 
         //The default is pretty good, but add fallback handling of Relay:
         var erp = DefaultERPolicy.Create(Brunet.Relay.RelayERPolicy.Instance,
@@ -328,6 +327,7 @@ namespace Brunet
     public string Realm { get { return _realm; } }
     
     protected readonly Util.FuzzyEvent _check_edges;
+    protected Util.FuzzyEvent _monitor_fe;
 
     /** Object which we lock for thread safety */
     protected readonly object _sync;
@@ -897,28 +897,54 @@ namespace Brunet
       return String.Format("Node({0})", Address);
     }
 
+    protected void MonitorLogOff()
+    {
+      Util.FuzzyEvent fe = _monitor_fe;
+      _monitor_fe = null;
+      if(fe != null) {
+        fe.TryCancel();
+      }
+    }
+
+    protected void MonitorLogSwitch()
+    {
+      if(_running == 0) {
+        MonitorLogOff();
+        return;
+      }
+
+      if(ProtocolLog.Monitor.Enabled) {
+        IAction log_act = new LogAction(_packet_queue);
+        Action<DateTime> log_todo = delegate(DateTime dt) {
+          EnqueueAction(log_act);
+        };
+        int millisec_timeout = 5000; //log every 5 seconds.
+        Util.FuzzyEvent fe = Brunet.Util.FuzzyTimer.Instance.DoEvery(log_todo,
+            millisec_timeout, millisec_timeout/2);
+        if(Interlocked.CompareExchange(ref _monitor_fe, fe, null) != null) {
+          fe.TryCancel();
+        }
+      }
+
+      if(_running == 0 || !ProtocolLog.Monitor.Enabled) {
+        MonitorLogOff();
+      }
+    }
+
+
     /**
      * There can only safely be one of these threads running
      */
     protected void AnnounceThread() {
-      Brunet.Util.FuzzyEvent fe = null;
+      ProtocolLog.Monitor.SwitchedSetting += MonitorLogSwitch;
+      MonitorLogSwitch();
       try {
-        int millisec_timeout = 5000; //log every 5 seconds.
         IAction queue_item = null;
         bool timedout = false;
-        if( ProtocolLog.Monitor.Enabled ) {
-          IAction log_act = new LogAction(_packet_queue);
-          Action<DateTime> log_todo = delegate(DateTime dt) {
-            EnqueueAction(log_act);
-          };
-          fe = Brunet.Util.FuzzyTimer.Instance.DoEvery(log_todo, millisec_timeout, millisec_timeout/2);
-        }
         while( 1 == _running ) {
-          queue_item = _packet_queue.Dequeue(millisec_timeout, out timedout);
-          if (!timedout) {
-            _current_action = queue_item;
-            queue_item.Start();
-          }
+          queue_item = _packet_queue.Dequeue(-1, out timedout);
+          _current_action = queue_item;
+          queue_item.Start();
         }
       }
       catch(System.InvalidOperationException x) {
@@ -935,10 +961,10 @@ namespace Brunet
         "ERROR: Exception in AnnounceThread: {0}", x));
       }
       finally {
-        //Make sure we stop logging:
-        if( fe != null ) { fe.TryCancel(); }
+        ProtocolLog.Monitor.SwitchedSetting -= MonitorLogSwitch;
+        MonitorLogOff();
       }
-      ProtocolLog.Write(ProtocolLog.Monitor,
+      ProtocolLog.Write(ProtocolLog.NodeLog,
                         String.Format("Node: {0} leaving AnnounceThread",
                                       this.Address));
 
@@ -1245,7 +1271,7 @@ namespace Brunet
               /* we never got a response! */
               if( !e.IsClosed ) {
                 //We are going to close it after waiting:
-                ProtocolLog.WriteIf(ProtocolLog.NodeLog, String.Format(
+                ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
 	                "On an edge timeout({1}), closing connection: {0}",
                   c, DateTime.UtcNow - start));
                 //Make sure it is indeed closed.

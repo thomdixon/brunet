@@ -122,6 +122,7 @@ namespace Brunet.Applications {
         _app_node = node;
 
         new Information(node.Node, "BasicNode", node.SecurityOverlord);
+        new LogManager(node.Node);
         Console.WriteLine("Starting at {0}, {1} is connecting to {2}.",
             DateTime.UtcNow, node.Node.Address, node.Node.Realm);
 

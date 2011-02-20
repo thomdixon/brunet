@@ -23,7 +23,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-//#define LINK_DEBUG
+#define LINK_DEBUG
 
 #if BRUNET_NUNIT
 using NUnit.Framework;
@@ -605,7 +605,7 @@ namespace Brunet.Connections
       }
 #if LINK_DEBUG
       if (BU.ProtocolLog.LinkDebug.Enabled) {
-	  BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug,
+        BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug,
                             String.Format("{0}: Linker({1}) {2}: transfering lock on {3} to {4}",
                               _local_n.Address, _lid, (_target_lock == null), a, l));
       }
@@ -743,7 +743,7 @@ namespace Brunet.Connections
         BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug, 
           String.Format("{0}: Linker({1}) restarting; remaining attempts: {2}",
             _local_n.Address, _lid, rss.RemainingAttempts));
-        }
+      }
 #endif
     }
     return rss;
@@ -753,7 +753,7 @@ namespace Brunet.Connections
      LinkProtocolState lps = (LinkProtocolState)olps;
 #if LINK_DEBUG
      if (BU.ProtocolLog.LinkDebug.Enabled) {
-	BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug, 
+      BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug, 
 			  String.Format("{0}: Linker({1}): {2} finished with result: {3} at: {4}",
           _local_n.Address, _lid, lps, lps.MyResult, DateTime.UtcNow));
      }

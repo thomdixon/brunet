@@ -62,7 +62,10 @@ namespace Brunet.Connections {
         return;
       }
 
-      ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "Trying: " + addr);
+      if(ProtocolLog.PolicyBasedCO.Enabled) {
+        ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
+                          "Set: {0} at {1}", addr, DateTime.UtcNow));
+      }
       ConnectTo(addr);
     }
 
@@ -91,13 +94,15 @@ namespace Brunet.Connections {
     {
       if(!ConnectionDesired(con.Address)) {
         if(con.ConType.Equals(Type)) {
-          ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "No longer needed: " + con);
         }
         return;
       }
 
       if(IsActive) {
-        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "Lost: " + con);
+        if(ProtocolLog.PolicyBasedCO.Enabled) {
+          ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
+                            "Disconnection: {0} at {1}", con, DateTime.UtcNow));
+        }
         DelayedConnectTo(con.Address, true);
       }
     }
@@ -105,7 +110,10 @@ namespace Brunet.Connections {
     override protected void ObtainedConnection(Connection con)
     {
       if(ConnectionDesired(con.Address)) {
-        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "Got connection: " + con);
+        if(ProtocolLog.PolicyBasedCO.Enabled) {
+          ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
+                            "Connection: {0} at {1}", con, DateTime.UtcNow));
+        }
       } else if(con.ConType.Equals(Type)) {
         DelayedRemove(con.Address, "Undesired");
       }
