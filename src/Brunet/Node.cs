@@ -443,6 +443,7 @@ namespace Brunet
     virtual public int NetworkSize {
       get { return -1; }
     }
+    protected Thread _announce_thread;
     /** The IAction that was most recently started */
     protected IAction _current_action;
     protected float _packet_queue_exp_avg = 0.0f;
@@ -727,28 +728,46 @@ namespace Brunet
          * a memory explosion
          */
 //        throw new Exception(String.Format("Queue is too long: {0}", queue_size));
-        ProtocolLog.WriteIf(ProtocolLog.Exceptions, String.Format("Queue is too long: {0}", queue_size));
+        LogPacketQueue();
       }
       int count = _packet_queue.Enqueue(a);
       _packet_queue_exp_avg = (PACKET_QUEUE_RETAIN * _packet_queue_exp_avg)
           + ((1 - PACKET_QUEUE_RETAIN) * count);
 
       if(_packet_queue_exp_avg > MAX_AVG_QUEUE_LENGTH) {
-        if(_LOG) {
-          String top_string = String.Empty;
-          try {
-            top_string = _current_action.ToString();
-          }
-          catch {}
-          ProtocolLog.Write(ProtocolLog.Monitor, String.Format(
-            "Packet Queue Average too high: {0} at {1}.  Actual length:  {2}\n\tTop most action: {3}",
-            _packet_queue_exp_avg, DateTime.UtcNow, count, top_string));
-        }
+        LogPacketQueue();
         if(_disconnect_on_overload) {
           Disconnect();
         }
       }
 #endif
+    }
+
+    protected void LogPacketQueue() {
+      // Exceptions is enabled for legacy purposes
+      if(!ProtocolLog.Exceptions.Enabled && !ProtocolLog.Monitor.Enabled) {
+        return;
+      }
+      String top_string = String.Empty;
+      try {
+        top_string = _current_action.ToString();
+      }
+      catch {}
+      string sts = string.Empty;
+      if(_announce_thread != null) {
+        _announce_thread.Suspend();
+        while(_announce_thread.ThreadState != ThreadState.Suspended) {
+          Thread.Sleep(0);
+        }
+        try {
+          var st = new System.Diagnostics.StackTrace(_announce_thread, false);
+          sts = st.ToString();
+        } catch { }
+        _announce_thread.Resume();
+      }
+      ProtocolLog.Write(ProtocolLog.Monitor, String.Format(
+        "Packet Queue Average: {0} at {1}.  Actual length:  {2}\n\tTop most action: {3}\n\tStack: {4} ",
+        _packet_queue_exp_avg, DateTime.UtcNow, _packet_queue.Count, top_string, sts));
     }
 
     /**
@@ -982,6 +1001,7 @@ namespace Brunet
      * network
      */
     public virtual void Connect() {
+      _announce_thread = Thread.CurrentThread;
       if (Thread.CurrentThread.Name == null) {
         Thread.CurrentThread.Name = "announce_thread";
       }
