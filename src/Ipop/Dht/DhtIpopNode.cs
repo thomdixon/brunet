@@ -103,25 +103,6 @@ namespace Ipop.Dht {
       ThreadPool.QueueUserWorkItem(callback, null);
     }
 
-    /// <summary>Someone told us we didn't have a mapping... let's fix that.</summary>
-    protected override bool MappingMissing(MemBlock ip)
-    {
-      if(!base.MappingMissing(ip)) {
-        return false;
-      }
-
-      // Easiest approach is to simply update the mapping...
-      DhcpServer dhcp_server = GetDhcpServer();
-      try {
-        dhcp_server.RequestLease(ip, true, AppNode.Node.Address.ToString(),
-            _ipop_config.AddressData.Hostname);
-      } catch(Exception e) {
-        ProtocolLog.WriteIf(IpopLog.DhcpLog, e.Message);
-      }
-
-      return true;
-    }
-
     protected override bool SupportedDns(string dns) {
       if("DhtDns".Equals(dns)) {
         return true;

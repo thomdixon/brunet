@@ -837,8 +837,7 @@ namespace Ipop {
       if(method.Equals("NoSuchMapping")) {
         string sip = args[0] as string;
         MemBlock ip = MemBlock.Reference(Utils.StringToBytes(sip, '.'));
-        MappingMissing(ip);
-        result = true;
+        result = MappingMissing(ip);
       } else if(method.Equals("GetMapping")) {
         string sip = args[0] as string;
         MemBlock ip = MemBlock.Reference(Utils.StringToBytes(sip, '.'));
@@ -879,8 +878,23 @@ namespace Ipop {
     protected virtual bool MappingMissing(MemBlock ip)
     {
       ProtocolLog.WriteIf(IpopLog.ResolverLog, "Notified of address missing.");
-      // do we even own this ip?
-      return _ip_to_ether.ContainsKey(ip);
+      if(!_ip_to_ether.ContainsKey(ip)) {
+        return false;
+      }
+
+      WaitCallback wcb = delegate(object o) {
+        // Easiest approach is to simply update the mapping...
+        DhcpServer dhcp_server = GetDhcpServer();
+        try {
+          dhcp_server.RequestLease(ip, true, AppNode.Node.Address.ToString(),
+              _ipop_config.AddressData.Hostname);
+        } catch(Exception e) {
+          ProtocolLog.WriteIf(IpopLog.DhcpLog, e.Message);
+        }
+      };
+
+      ThreadPool.QueueUserWorkItem(wcb);
+      return true;
     }
 #endregion
   }
