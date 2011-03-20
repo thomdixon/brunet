@@ -78,6 +78,12 @@ function start()
     fi
   fi
 
+  if [[ ! -e /dev/net/tun ]]; then
+    mkdir /dev/net
+    mknod /dev/net/tun c 10 200
+    chmod 666 /dev/net/tun
+  fi
+
   if [[ ! -e /proc/sys/net/ipv4/neigh/tapipop ]]; then
     chmod 666 /dev/net/tun
     tunctl -t tapipop $tunctl_user &> /dev/null
