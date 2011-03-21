@@ -8,7 +8,7 @@ function get_pid()
 
 function trace()
 {
-  pid=`get_pid DhtIpopNode.exe`
+  pid=$(get_pid DhtIpopNode.exe)
   if [[ $pid ]]; then
     kill -USR2 $pid
   fi
@@ -18,12 +18,12 @@ function stop()
 {
   echo "Stopping IPOP..."
 
-  dhcp_pid=`get_pid tapipop`
+  dhcp_pid=$(get_pid tapipop)
   if [[ $dhcp_pid ]]; then
     kill -KILL $dhcp_pid
   fi
 
-  pid=`get_pid DhtIpopNode.exe`
+  pid=$(get_pid DhtIpopNode.exe)
 
   if [[ $pid ]]; then
     if [[ "$USE_IPOP_HOSTNAME" ]]; then
@@ -32,7 +32,9 @@ function stop()
     $DIR/bin/dump_dht_proxy.py $DIR/etc/dht_proxy
     kill -SIGINT $pid &> /dev/null
 
-    while [[ `get_pid DhtIpopNode.exe` ]]; do
+    pid=$(get_pid DhtIpopNode.exe)
+    while [[ "$pid" ]]; do
+      pid=$(get_pid DhtIpopNode.exe)
       sleep 5
       kill -KILL $pid &> /dev/null
     done
@@ -49,7 +51,7 @@ function stop()
 function start()
 {
   echo "Starting IPOP..."
-  pid=`get_pid DhtIpopNode.exe`
+  pid=$(get_pid DhtIpopNode.exe)
   if [[ $pid ]]; then
     echo "IPOP Already running..."
     return 1
@@ -94,10 +96,10 @@ function start()
 #trace is only enabled to help find bugs, to use it execute groupvpn.sh trace
   python daemon.py $user $group "mono --trace=disabled DhtIpopNode.exe -n $DIR/etc/node.config -i $DIR/etc/ipop.config -d $DIR/etc/dhcp.config 2>&1 | cronolog --period=\"1 day\" --symlink=$DIR/var/ipoplog $DIR/var/ipop.log.%y%m%d"
   cd - &> /dev/null
-  pid=`get_pid DhtIpopNode.exe`
+  pid=$(get_pid DhtIpopNode.exe)
   if [[ ! $pid ]]; then
     sleep 5
-    pid=`get_pid DhtIpopNode.exe`
+    pid=$(get_pid DhtIpopNode.exe)
   fi
 
   if [[ ! $pid ]]; then
@@ -111,7 +113,7 @@ function start()
     while [[ $result == 1 && $pid && -e $DIR/etc/dht_proxy ]]; do
       $DIR/bin/load_dht_proxy.py $DIR/etc/dht_proxy &> /dev/null
       result=$?
-      pid=`get_pid DhtIpopNode.exe`
+      pid=$(get_pid DhtIpopNode.exe)
     done
   fi
 
@@ -124,11 +126,11 @@ function start()
     fi
   else
     if [[ ! "$DHCP" ]]; then
-      if [[ "`which dhclient3 2> /dev/null`" ]]; then
+      if [[ "$(which dhclient3 2> /dev/null)" ]]; then
         DHCP="dhclient3 -pf /var/run/dhclient.$DEVICE.pid -lf /var/lib/dhcp3/dhclient.$DEVICE.leases $DEVICE"
-      elif [[ "`which dhcpcd 2> /dev/null`" ]]; then
+      elif [[ "$(which dhcpcd 2> /dev/null)" ]]; then
         DHCP="dhcpcd $DEVICE"
-      elif [[ "`which dhclient 2> /dev/null`" ]]; then
+      elif [[ "$(which dhclient 2> /dev/null)" ]]; then
         DHCP="dhclient -nw -pf /var/run/dhclient.$DEVICE.pid -lf /var/lib/dhcp/dhclient.$DEVICE.leases $DEVICE"
       else
         echo "No valid DHCP client"
