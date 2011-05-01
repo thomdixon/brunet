@@ -183,7 +183,7 @@ namespace Brunet.Security.PeerSec {
         }
       }
 
-      if(start && sa.State != SecurityAssociation.States.Active) {
+      if(start && sa.State != SecurityAssociation.States.Active && sa.Start()) {
         StartSA(sa);
       }
       return sa;
@@ -769,6 +769,7 @@ namespace Brunet.Security.PeerSec {
       ms0.ReturnPath = ms1;
 
       SecurityAssociation sa0 = so0.CreateSecurityAssociation(ms0, spi);
+      Assert.IsFalse((sa0 as PeerSecAssociation).Start(), "Cannot start SA again");
       SecurityAssociation sa1 = so1.CreateSecurityAssociation(ms1, spi);
       Assert.AreEqual(sa0.State, SecurityAssociation.States.Active, "sa0 should be active!");
       Assert.AreEqual(sa1.State, SecurityAssociation.States.Active, "sa1 should be active!");

@@ -114,6 +114,7 @@ namespace Brunet.Security.PeerSec {
     ///<summary>True if we have successfully verified the hash.</summary>
     public bool HashVerified { get { return _hash_verified; } }
     protected bool _hash_verified;
+    protected int _called_start;
 
     ///<summary>Remote half of the DHE</summary>
     public WriteOnceIdempotent<MemBlock> RDHE;
@@ -143,11 +144,20 @@ namespace Brunet.Security.PeerSec {
     public PeerSecAssociation(ISender sender, CertificateHandler ch, int spi) :
       base(sender, ch)
     {
+      _called_start = 0;
       _closed = 0;
       _active = false;
       _spi = spi;
       _state = States.Waiting;
       Reset();
+    }
+
+    public bool Start()
+    {
+      if(Interlocked.Exchange(ref _called_start, 1) == 0) {
+        return true;
+      }
+      return TryReset();
     }
 
     ///<summary>This method listens for the SH to request an update and passes
