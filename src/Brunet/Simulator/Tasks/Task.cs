@@ -22,10 +22,14 @@ namespace Brunet.Simulator.Tasks {
     {
       _done = false;
       _finished = finished;
+      _start = DateTime.MaxValue;
     }
 
     virtual public void Start()
     {
+      if(_start != DateTime.MaxValue) {
+        throw new Exception("Already started!");
+      }
       _start = DateTime.UtcNow;
     }
 
