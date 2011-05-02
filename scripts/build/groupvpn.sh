@@ -3,7 +3,7 @@ source /etc/ipop.vpn.config
 
 function get_pid()
 {
-  ps uax | grep $1 | grep -v grep | grep -v get_pid | awk -F" " {'print $2'} | grep -oE "[0-9]+"
+  ps -eo pid,cmd | grep $1 | grep -v grep | grep -v get_pid | grep -oE "[0-9]+"
 }
 
 function trace()
@@ -129,7 +129,7 @@ function start()
         exit
       fi
     fi
-    $DHCP 1>&- 2>&- <&- &
+    $DHCP &> /var/log/ipop.dhcp.log <&- &
   fi
 
 # setup logging
