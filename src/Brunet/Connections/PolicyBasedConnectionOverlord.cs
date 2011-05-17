@@ -176,12 +176,9 @@ namespace Brunet.Connections {
         }
 
         Connection con = _node.ConnectionTable.GetConnection(MainType, addr);
-        // Don't proceed if there is no con, this CO didn't make the con, or
-        // the con was initiated by the remote peer
-        if(con == null || !con.ConType.Equals(Type) ||
-            _node.Address.ToString().Equals(con.State.PeerLinkMessage.Token))
-        {
-          return;
+        // Don't proceed if there is no con or this CO didn't make the con
+        if(con == null || !con.ConType.Equals(Type)) {
+               return;
         }
 
         ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "Closing: " + con);
