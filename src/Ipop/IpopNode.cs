@@ -257,6 +257,10 @@ namespace Ipop {
 
       if(ret is AHSender) {
         addr = ((AHSender) ret).Destination;
+        if(addr == null) {
+          ProtocolLog.Write(IpopLog.PacketLog, "Null Address from AHSender");
+          return;
+        }
       } else {
         ProtocolLog.Write(IpopLog.PacketLog, String.Format(
           "Incoming packet was not from an AHSender: {0}.", ret));
@@ -301,6 +305,7 @@ namespace Ipop {
       }
 
       WriteIP(packet);
+      _ondemand.Set(addr);
     }
 
     /// <summary>This method handles IPPackets that come from the TAP Device, i.e.,
