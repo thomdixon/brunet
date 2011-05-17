@@ -134,8 +134,6 @@ namespace Brunet.Connections {
 
       if(con == null) {
         FailedConnectionAttempt(addr);
-      } else {
-        ObtainedConnection(con);
       }
     }
 
@@ -154,7 +152,8 @@ namespace Brunet.Connections {
           return;
         }
 
-        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "Retrying: " + addr);
+        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, String.Format(
+              "Retrying: {0} at {1}", addr, DateTime.UtcNow));
         ConnectTo(addr);
       };
 
@@ -169,6 +168,11 @@ namespace Brunet.Connections {
     /// through connections... the need for this should probably be evaluated.</summary>
     protected void DelayedRemove(Address addr)
     {
+      DelayedRemove(addr, "None given");
+    }
+
+    protected void DelayedRemove(Address addr, string reason)
+    {
       Action<DateTime> callback = delegate(DateTime now) {
         // Maybe after the delay, the connection is now desired...
         if(ConnectionDesired(addr)) {
@@ -181,7 +185,8 @@ namespace Brunet.Connections {
                return;
         }
 
-        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "Closing: " + con);
+        ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, String.Format(
+          "Closing because {0}: {1}", reason, con));
         con.Close(_node.Rpc, "Closed by request of CO");
       };
       FuzzyTimer.Instance.DoAfter(callback, 60000, 500);

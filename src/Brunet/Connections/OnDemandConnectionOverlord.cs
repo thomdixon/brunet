@@ -107,7 +107,7 @@ namespace Brunet.Connections {
       if(ConnectionDesired(con.Address)) {
         ProtocolLog.WriteIf(ProtocolLog.OnDemandCO, "Got connection: " + con);
       } else if(con.ConType.Equals(Type)) {
-        DelayedRemove(con.Address);
+        DelayedRemove(con.Address, "Undesired");
       }
     }
 
@@ -122,7 +122,7 @@ namespace Brunet.Connections {
     /// connection.</summary>
     protected void HandleEviction(object sender, TimeBasedCache<Address, bool>.EvictionArgs ea)
     {
-      DelayedRemove(ea.Key);
+      DelayedRemove(ea.Key, "No longer needed");
     }
   }
 }
