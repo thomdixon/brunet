@@ -115,7 +115,7 @@ namespace Brunet.Connections
       }
     }
 
-    override protected bool ConnectionDesired(Address addr)
+    override public bool ConnectionDesired(Address addr)
     {
       lock(_sync) {
         return _connection_state.ContainsKey(addr);

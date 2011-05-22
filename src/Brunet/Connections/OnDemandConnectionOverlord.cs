@@ -70,7 +70,7 @@ namespace Brunet.Connections {
     {
     }
 
-    override protected bool ConnectionDesired(Address addr)
+    override public bool ConnectionDesired(Address addr)
     {
       bool value;
       return _cache.TryGetValue(addr, out value);

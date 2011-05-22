@@ -63,7 +63,7 @@ namespace Brunet.Connections {
 
     /// <summary>Returns true if a connection to the address specified is
     /// desirable, false otherwise.</summary>
-    abstract protected bool ConnectionDesired(Address addr);
+    abstract public bool ConnectionDesired(Address addr);
     /// <summary>Called when an attempt to the address specified has failed.</summary>
     abstract protected void FailedConnectionAttempt(Address addr);
     /// <summary>Called when a connection has been lost.</summary>
