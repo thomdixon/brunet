@@ -51,6 +51,16 @@ namespace Brunet.Security.PeerSec.Symphony {
       }
     }
 
+    public Address GetAddress(SecurityAssociation sa)
+    {
+      lock(_sync) {
+        if(_sa_to_address.ContainsKey(sa)) {
+          return _sa_to_address[sa];
+        }
+      }
+      return null;
+    }
+
     // Provides a method for local apps to add certificates to Brunet without
     // being loaded with Brunet.
     public void HandleRpc(ISender caller, string method, IList args, object rs)
