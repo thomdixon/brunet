@@ -2,6 +2,10 @@
 using System;
 using Brunet;
 using Brunet.Connections;
+using Brunet.Messaging.Mock;
+using Brunet.Services;
+using Brunet.Security.PeerSec.Symphony;
+using Brunet.Symphony;
 using Brunet.Util;
 using Brunet.Simulator.Tasks;
 using Brunet.Simulator.Transport;
@@ -20,31 +24,112 @@ namespace Brunet.Simulator {
       }
     }
 
+    static readonly int fifteen_mins = (int) ((new TimeSpan(0, 15, 0)).Ticks / TimeSpan.TicksPerMillisecond);
+
     [Test]
-    public void CompleteTheRing() {
+    /// <summary>First half builds the ring, second half tests the connection handler...</summary>
+    public void RingTest() {
       Parameters p = new Parameters("Test", "Test");
-      string[] args = "-b=.2 -c -s=25".Split(' ');
-      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);;
+      string[] args = "-b=.2 -c -s=50".Split(' ');
+      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);
       Simulator sim = new Simulator(p);
       _sim = sim;
       Assert.IsTrue(sim.Complete(true), "Simulation failed to complete the ring");
+      SimpleTimer.RunSteps(fifteen_mins, false);
+      Node node0 = sim.TakenIDs.Values[0].Node;
+      int idx = 1;
+      Node node1 = null;
+      do {
+        node1 = sim.TakenIDs.Values[idx++].Node;
+      } while(Simulator.AreConnected(node0, node1) && idx < sim.TakenIDs.Count);
+      var ptype = new PType("chtest");
+      var ch0 = new ConnectionHandler(ptype, (StructuredNode) node0);
+      var ch1 = new ConnectionHandler(ptype, (StructuredNode) node1);
+      ConnectionHandlerTest(node0, node1, ch0, ch1);
     }
 
     [Test]
-    public void CompleteTheSecureRing() {
+    public void SecureRingTest() {
       Parameters p = new Parameters("Test", "Test");
       string[] args = "-b=.2 -c --secure_edges -s=25".Split(' ');
-      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);;
+      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);
       Simulator sim = new Simulator(p);
       _sim = sim;
       Assert.IsTrue(sim.Complete(true), "Simulation failed to complete the ring");
+      var nm0 = sim.TakenIDs.Values[0];
+      int idx = 1;
+      NodeMapping nm1 = null;
+      do {
+        nm1 = sim.TakenIDs.Values[idx++];
+      } while(Simulator.AreConnected(nm0.Node, nm1.Node) && idx < sim.TakenIDs.Count);
+      Assert.IsFalse(Simulator.AreConnected(nm0.Node, nm1.Node), "Sanity check");
+      var ptype = new PType("chtest");
+      var ch0 = new SecureConnectionHandler(ptype, (StructuredNode) nm0.Node, nm0.Sso);
+      var ch1 = new SecureConnectionHandler(ptype, (StructuredNode) nm1.Node, nm1.Sso);
+      ConnectionHandlerTest(nm0.Node, nm1.Node, ch0, ch1);
+    }
+
+    protected void ConnectionHandlerTest(Node node0, Node node1,
+        ConnectionHandler ch0, ConnectionHandler ch1)
+    {
+      var mdh0 = new MockDataHandler();
+      var mdh1 = new MockDataHandler();
+      MemBlock zero = MemBlock.Reference(new byte[] {0});
+      EventHandler cb = delegate(object o, EventArgs ea) {
+        Assert.AreEqual(o, zero, "Zero");
+      };
+
+      mdh0.HandleDataCallback += cb;
+      mdh1.HandleDataCallback += cb;
+      ch0.Subscribe(mdh0, null);
+      ch1.Subscribe(mdh1, null);
+
+      Assert.AreEqual(mdh0.Count, 0, "MDH0 0");
+      Assert.AreEqual(mdh1.Count, 0, "MDH1 0");
+      ch0.ConnectTo(node1.Address);
+      Assert.IsTrue(AreConnected(node0, node1), "ConnectionHandler ConnectTo");
+      SimpleTimer.RunSteps(fifteen_mins * 2, false);
+      Assert.IsFalse(Simulator.AreConnected(node0, node1));
+      ch0.Send(node1.Address, zero);
+      SimpleTimer.RunSteps(fifteen_mins / 60, false);
+      Assert.AreEqual(mdh0.Count, 0, "MDH0 1");
+      Assert.AreEqual(mdh1.Count, 0, "MDH1 1");
+      Assert.IsTrue(AreConnected(node0, node1), "ConnectionHandler ConnectTo0");
+      SimpleTimer.RunSteps(fifteen_mins / 3, false);
+      ch0.Send(node1.Address, zero);
+      SimpleTimer.RunSteps(fifteen_mins / 60, false);
+      Assert.AreEqual(mdh0.Count, 0, "MDH0 2");
+      Assert.AreEqual(mdh1.Count, 1, "MDH1 2");
+      Assert.IsTrue(Simulator.AreConnected(node0, node1), "Continuous 0");
+      SimpleTimer.RunSteps(fifteen_mins / 3, false);
+      ch0.Send(node1.Address, zero);
+      SimpleTimer.RunSteps(fifteen_mins / 60, false);
+      Assert.AreEqual(mdh0.Count, 0, "MDH0 3");
+      Assert.AreEqual(mdh1.Count, 2, "MDH1 3");
+      Assert.IsTrue(Simulator.AreConnected(node0, node1), "Continuous 1");
+      SimpleTimer.RunSteps(fifteen_mins / 3, false);
+      ch0.Send(node1.Address, zero);
+      SimpleTimer.RunSteps(fifteen_mins / 60, false);
+      Assert.AreEqual(mdh0.Count, 0, "MDH0 4");
+      Assert.AreEqual(mdh1.Count, 3, "MDH1 4");
+      Assert.IsTrue(Simulator.AreConnected(node0, node1), "Continuous 2");
+      SimpleTimer.RunSteps(fifteen_mins / 3, false);
+      ch1.Send(node0.Address, zero);
+      SimpleTimer.RunSteps(fifteen_mins / 60, false);
+      Assert.AreEqual(mdh0.Count, 1, "MDH0 5");
+      Assert.AreEqual(mdh1.Count, 3, "MDH1 5");
+      Assert.IsTrue(Simulator.AreConnected(node0, node1), "Continuous 3");
+      SimpleTimer.RunSteps(fifteen_mins * 2, false);
+      Assert.IsFalse(Simulator.AreConnected(node0, node1), "Dead");
+      Assert.AreEqual(mdh0.Count, 1, "MDH0 6");
+      Assert.AreEqual(mdh1.Count, 3, "MDH1 6");
     }
 
 //    [Test]
     public void CompleteTheDtlsRing() {
       Parameters p = new Parameters("Test", "Test");
       string[] args = "-b=.2 --dtls -c --secure_edges -s=25".Split(' ');
-      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);;
+      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);
       Simulator sim = new Simulator(p);
       Assert.IsTrue(sim.Complete(true), "Simulation failed to complete the ring");
     }
@@ -53,7 +138,7 @@ namespace Brunet.Simulator {
     public void CompleteTheSubring() {
       SubringParameters p = new SubringParameters();
       string[] args = "-b=.2 -c --secure_edges -s=25 --subring=10".Split(' ');
-      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);;
+      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);
       SubringSimulator sim = new SubringSimulator(p);
       _sim = sim;
       Assert.IsTrue(sim.Complete(true), "Simulation failed to complete the ring");
@@ -63,7 +148,7 @@ namespace Brunet.Simulator {
     public void TestNatTraversal() {
       Parameters p = new Parameters("Test", "Test");
       string[] args = "-c -s=100".Split(' ');
-      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);;
+      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);
       Simulator sim = new Simulator(p);
       _sim = sim;
       Assert.IsTrue(sim.Complete(true), "Simulation failed to complete the ring");
@@ -110,7 +195,7 @@ namespace Brunet.Simulator {
     public void Relays() {
       Parameters p = new Parameters("Test", "Test");
       string[] args = "-s=100".Split(' ');
-      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);;
+      Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);
       RelayOverlapSimulator sim = new RelayOverlapSimulator(p);
       _sim = sim;
 
