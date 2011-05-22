@@ -106,7 +106,7 @@ namespace Brunet.Security.PeerSec.Symphony {
           sa = _address_to_sa[target] as PeerSecAssociation;
         } else {
           AHSender sender = new AHExactSender(_node, target);
-          sa = base.CreateSecurityAssociation(sender, SecurityPolicy.DefaultSPI);
+          sa = base.CreateSecurityAssociation(sender, SecurityPolicy.DefaultSPI, true);
           _address_to_sa[target] = sa;
           _sa_to_address[sa] = target;
           new_sa = true;
@@ -121,18 +121,18 @@ namespace Brunet.Security.PeerSec.Symphony {
     }
 
     // We override the underlying method so that we can properly wrap incoming AHSenders
-    override public PeerSecAssociation CreateSecurityAssociation(ISender sender, int spi)
+    override protected PeerSecAssociation CreateSecurityAssociation(ISender sender, int spi, bool start)
     {
       PeerSecAssociation sa = null;
       lock(_sync) {
-        sa = base.CreateSecurityAssociation(sender, spi);
+        sa = base.CreateSecurityAssociation(sender, spi, start);
         AHSender ahsender = sender as AHSender;
         if(ahsender != null) {
           Address target = ahsender.Destination;
           if(_address_to_sa.ContainsKey(target)) {
             sa = _address_to_sa[target] as PeerSecAssociation;
           } else {
-            sa = base.CreateSecurityAssociation(sender, spi);
+            sa = base.CreateSecurityAssociation(sender, spi, start);
             _address_to_sa[target] = sa;
             _sa_to_address[sa] = target;
           }

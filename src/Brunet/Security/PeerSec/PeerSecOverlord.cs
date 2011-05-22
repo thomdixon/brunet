@@ -149,13 +149,13 @@ namespace Brunet.Security.PeerSec {
 
     /// <summary>This (idempotently) returns a new SecurityAssociation for the
     /// specified sender using the specified SPI and starts it if requested to.</summary>
-    virtual public PeerSecAssociation CreateSecurityAssociation(ISender Sender, int SPI) {
+    public PeerSecAssociation CreateSecurityAssociation(ISender Sender, int SPI) {
       return CreateSecurityAssociation(Sender, SPI, true);
     }
 
     /// <summary>This (idempotently) returns a new SecurityAssociation for the
     /// specified sender using the specified SA.</summary>
-    protected PeerSecAssociation CreateSecurityAssociation(ISender Sender,
+    virtual protected PeerSecAssociation CreateSecurityAssociation(ISender Sender,
         int SPI, bool start)
     {
       if(!SecurityPolicy.Supports(SPI)) {
