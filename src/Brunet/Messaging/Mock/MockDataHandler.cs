@@ -40,6 +40,7 @@ namespace Brunet.Messaging.Mock {
     Hashtable _ht;
     ArrayList _order;
     MemBlock _last_received;
+    public int Count { get { return _order.Count; } }
     public MemBlock LastReceived { get { return _last_received; } }
     public event EventHandler HandleDataCallback;
 
