@@ -81,7 +81,9 @@ namespace Brunet.Services {
       Address addr = null;
       if(!_sender_to_address.TryGetValue(sender, out addr)) {
         addr = SenderToAddress(sender);
-        AddConnection(addr, sender);
+        if(addr != null) {
+          AddConnection(addr, sender);
+        }
       }
       return addr;
     }

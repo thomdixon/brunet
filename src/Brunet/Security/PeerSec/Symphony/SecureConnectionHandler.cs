@@ -123,7 +123,7 @@ namespace Brunet.Security.PeerSec.Symphony {
     protected void SAStateChange(SecurityAssociation sa,
         SecurityAssociation.States state)
     {
-      Address addr = _so.GetAddress(sa);
+      Address addr = SenderToAddress(sa);
       if(addr == null) {
         return;
       }

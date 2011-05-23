@@ -25,6 +25,7 @@ using Brunet.Applications;
 using Brunet.Connections;
 using Brunet.Messaging;
 using Brunet.Security;
+using Brunet.Services;
 using Brunet.Symphony;
 using Brunet.Transport;
 using Brunet.Util;
@@ -78,8 +79,6 @@ namespace Ipop {
     /// <summary>The Rpc handler for the Public overlays Information.  It will
     /// be the same as AppNode's, if there is no private overlay.</summary>
     public readonly Information PublicInfo;
-    /// <summary>OnDemand for Brunet.</summary>
-    protected readonly OnDemandConnectionOverlord _ondemand;
     /// <summary>Resolves IP Addresses to Brunet.Addresses</summary>
     protected IAddressResolver _address_resolver;
     /// <summary>Resolves hostnames and IP Addresses</summary>
@@ -94,9 +93,8 @@ namespace Ipop {
     protected readonly bool _multicast;
     /// <summary>Enables broadcast.</summary>
     protected readonly bool _broadcast;
-    /// <summary>Enables IP over secure senders.</summary>
-    protected bool _secure_senders;
-
+    /// <summary>Address to ISender (connection or secure connection).</summary>
+    protected ConnectionHandler _conn_handler;
     /// <summary>Mapping of Ethernet address to IP Address.</summary>
     protected Dictionary<MemBlock, MemBlock> _ether_to_ip;
     /// <summary>Mapping of IP Address to Ethernet Address</summary>
@@ -142,8 +140,6 @@ namespace Ipop {
         AppNode.Node.DisconnectOnOverload = false;
       }
 
-      _ondemand = new OnDemandConnectionOverlord(AppNode.Node);
-      AppNode.Node.AddConnectionOverlord(_ondemand);
       _ipop_config = ipop_config;
 
       Ethernet = new Ethernet(_ipop_config.VirtualNetworkDevice);
@@ -160,11 +156,12 @@ namespace Ipop {
       }
 
       if(_ipop_config.EndToEndSecurity && AppNode.SymphonySecurityOverlord != null) {
-        _secure_senders = true;
+        _conn_handler = new Brunet.Security.PeerSec.Symphony.SecureConnectionHandler(
+            PType.Protocol.IP, AppNode.Node, AppNode.SymphonySecurityOverlord);
       } else {
-        _secure_senders = false;
+        _conn_handler = new ConnectionHandler(PType.Protocol.IP, AppNode.Node);
       }
-      AppNode.Node.GetTypeSource(PType.Protocol.IP).Subscribe(this, null);
+      _conn_handler.Subscribe(this, null);
 
       _sync = new object();
       _lock = 0;
@@ -227,11 +224,11 @@ namespace Ipop {
         EthernetPacket ep = new EthernetPacket(b);
 
         switch (ep.Type) {
-          case EthernetPacket.Types.Arp:
-            HandleArp(ep.Payload);
-            break;
           case EthernetPacket.Types.IP:
             HandleIPOut(ep, ret);
+            break;
+          case EthernetPacket.Types.Arp:
+            HandleArp(ep.Payload);
             break;
         }
       }
@@ -246,26 +243,7 @@ namespace Ipop {
     /// <param name="ret">An ISender to send data to the Brunet node that sent
     /// the packet.</param>
     public virtual void HandleIPIn(MemBlock packet, ISender ret) {
-      if(_secure_senders && !(ret is SecurityAssociation)) {
-        return;
-      }
-
-      Address addr = null;
-      if(ret is SecurityAssociation) {
-        ret = ((SecurityAssociation) ret).Sender;
-      }
-
-      if(ret is AHSender) {
-        addr = ((AHSender) ret).Destination;
-        if(addr == null) {
-          ProtocolLog.Write(IpopLog.PacketLog, "Null Address from AHSender");
-          return;
-        }
-      } else {
-        ProtocolLog.Write(IpopLog.PacketLog, String.Format(
-          "Incoming packet was not from an AHSender: {0}.", ret));
-        return;
-      }
+      Address addr = _conn_handler.GetAddress(ret);
 
       if(_translator != null) {
         try {
@@ -281,19 +259,20 @@ namespace Ipop {
 
       IPPacket ipp = new IPPacket(packet);
 
-      try {
-        if(!_address_resolver.Check(ipp.SourceIP, addr)) {
-          return;
-        }
-      } catch (AddressResolutionException ex) {
-        if(ex.Issue == AddressResolutionException.Issues.DoesNotExist) {
-          ProtocolLog.WriteIf(IpopLog.ResolverLog, "Notifying remote node of " +
-              " missing address: " + addr + ":" + ipp.SSourceIP);
+      if(!_address_resolver.Check(ipp.SourceIP, addr)) {
+        Address other = _address_resolver.Resolve(ipp.SourceIP);
+        if(other == null) {
+          ProtocolLog.WriteIf(IpopLog.ResolverLog, String.Format(
+              "Notifying remote node of missing address: {0} : {1}",
+              addr, ipp.SSourceIP));
           ISender sender = new AHExactSender(AppNode.Node, addr);
           AppNode.Node.Rpc.Invoke(sender, null, "Ipop.NoSuchMapping", ipp.SSourceIP);
           return;
-        } else {
-          throw;
+        } else if(other != addr) {
+          ProtocolLog.WriteIf(IpopLog.ResolverLog, String.Format(
+              "IP:P2P Mismatch IP: {0}, Claimed P2P: {1}, Local P2P: {2}",
+              ipp.SourceIP, addr, other));
+          return;
         }
       }
 
@@ -305,7 +284,6 @@ namespace Ipop {
       }
 
       WriteIP(packet);
-      _ondemand.Set(addr);
     }
 
     /// <summary>This method handles IPPackets that come from the TAP Device, i.e.,
@@ -325,6 +303,7 @@ namespace Ipop {
       }
 
       if(!IsLocalIP(ipp.SourceIP)) {
+        // This really ought to have been caught in ARP, but just in case...
         HandleNewStaticIP(packet.SourceAddress, ipp.SourceIP);
         return;
       }
@@ -360,10 +339,6 @@ namespace Ipop {
         }
       }
 
-      if(HandleOther(ipp)) {
-        return;
-      }
-
       if(_dhcp_server == null || ipp.DestinationIP.Equals(_dhcp_server.ServerIP)) {
         return;
       }
@@ -379,12 +354,7 @@ namespace Ipop {
       }
 
       if(target != null) {
-        if(IpopLog.PacketLog.Enabled) {
-          ProtocolLog.Write(IpopLog.PacketLog, String.Format(
-                            "Brunet destination ID: {0}", target));
-        }
         SendIP(target, packet.Payload);
-        _ondemand.Set(target);
       }
     }
 
@@ -437,42 +407,42 @@ namespace Ipop {
         return;
       }
 
-      // We shouldn't be returning these messages if no one exists at that end
-      // point
-     if(!ap.TargetProtoAddress.Equals(MemBlock.Reference(_dhcp_server.ServerIP))) {
-       Address baddr = null;
+      if(!ap.TargetProtoAddress.Equals(MemBlock.Reference(_dhcp_server.ServerIP))) {
+        // Do not return messages if there is no connection to the remote address
+        Address baddr = null;
+        try {
+          baddr = _address_resolver.Resolve(ap.TargetProtoAddress);
+        } catch(AddressResolutionException ex) {
+          if(ex.Issue != AddressResolutionException.Issues.DoesNotExist) {
+            throw;
+          }
+          // Otherwise nothing to do, mapping doesn't exist...
+        }
 
-       try {
-         baddr = _address_resolver.Resolve(ap.TargetProtoAddress);
-       } catch(AddressResolutionException ex) {
-         if(ex.Issue != AddressResolutionException.Issues.DoesNotExist) {
-           throw;
-         }
-         // Otherwise nothing to do, mapping doesn't exist...
-       }
+        if(AppNode.Node.Address.Equals(baddr) || baddr == null) {
+          ProtocolLog.WriteIf(IpopLog.Arp, String.Format("No mapping for: {0}",
+              Utils.MemBlockToString(ap.TargetProtoAddress, '.')));
+          return;
+        }
 
-       if(AppNode.Node.Address.Equals(baddr) || baddr == null) {
-         return;
-       }
-     }
+        if(!_conn_handler.ContainsAddress(baddr)) {
+          ProtocolLog.WriteIf(IpopLog.Arp, String.Format(
+              "No connection to {0} for {1}", baddr,
+              Utils.MemBlockToString(ap.TargetProtoAddress, '.')));
+          _conn_handler.ConnectTo(baddr);
+          return;
+        }
+      }
 
-     ProtocolLog.WriteIf(IpopLog.Arp, String.Format("Sending Arp response for: {0}",
-         Utils.MemBlockToString(ap.TargetProtoAddress, '.')));
+      ProtocolLog.WriteIf(IpopLog.Arp, String.Format("Sending Arp response for: {0}",
+        Utils.MemBlockToString(ap.TargetProtoAddress, '.')));
 
       ArpPacket response = ap.Respond(EthernetPacket.UnicastAddress);
 
       EthernetPacket res_ep = new EthernetPacket(ap.SenderHWAddress,
-        EthernetPacket.UnicastAddress, EthernetPacket.Types.Arp,
-        response.ICPacket);
+      EthernetPacket.UnicastAddress, EthernetPacket.Types.Arp,
+      response.ICPacket);
       Ethernet.Send(res_ep.ICPacket);
-    }
-
-    /// <summary>This method is called by HandleIPOut if the packet does match any
-    /// of the common mappings.</summary>
-    /// <param name="ipp"> The miscellaneous IPPacket.</param>
-    /// <returns>True if implemented, false otherwise.</returns>
-    protected virtual bool HandleOther(IPPacket ipp) {
-      return false;
     }
 
     /// <summary>This method is called by HandleIPOut if the destination address
@@ -509,20 +479,14 @@ namespace Ipop {
     /// <param name="target"> the Brunet Address of the target</param>
     /// <param name="packet"> the data to send to the recepient</param>
     protected virtual void SendIP(Address target, MemBlock packet) {
-      ISender s = null;
-      if(_secure_senders) {
-        try {
-          s = AppNode.SymphonySecurityOverlord.GetSecureSender(target);
-        }
-        catch(Exception e) {
-          Console.WriteLine(e);
-          return;
+      if(!_conn_handler.Send(target, packet)) {
+        if(IpopLog.PacketLog.Enabled) {
+          IPPacket ipp = new IPPacket(packet);
+          ProtocolLog.Write(IpopLog.PacketLog, String.Format(
+                "No connection to destination (IP / P2P): {0} / {1}",
+                ipp.SourceIP, target));
         }
       }
-      else {
-        s = new AHExactSender(AppNode.Node, target);
-      }
-      s.Send(new CopyList(PType.Protocol.IP, packet));
     }
 
     /// <summary>Writes an IPPacket as is to the TAP device.</summary>
@@ -824,7 +788,12 @@ namespace Ipop {
         }
         _last_check_node = now;
       }
-      ThreadPool.QueueUserWorkItem(CheckNetwork);
+
+      // Discover machines in on the LAN if they respond to ICMP requests
+      WaitCallback wcb = delegate(object obj) {
+        SendIcmpRequest(MemBlock.Reference(_dhcp_server.Broadcast));
+      };
+      ThreadPool.QueueUserWorkItem(wcb);
     }
 
     /// <summary>Called when an ethernet address has had its IP address changed
@@ -861,13 +830,6 @@ namespace Ipop {
         Utils.MemBlockToString(ip_addr, '.')));
     }
 
-    ///<summary>This let's us discover all machines in our subnet if and
-    ///only if they allow responding to broadcast Icmp Requests, which for
-    ///some reason doesn't seem to be defaulted in my Linux machines!</summary>
-    protected virtual void CheckNetwork(object o) {
-      SendIcmpRequest(MemBlock.Reference(_dhcp_server.Broadcast));
-    }
-
     public void HandleRpc(ISender caller, string method, IList args, object rs) {
       object result = null;
       if(method.Equals("NoSuchMapping")) {
@@ -899,7 +861,7 @@ namespace Ipop {
           return;
         }
         Connection con = AppNode.Node.ConnectionTable.GetConnection(ConnectionType.Structured, addr);
-        if(_secure_senders) {
+        if(AppNode.SymphonySecurityOverlord != null) {
           SecurityAssociation sa = AppNode.SymphonySecurityOverlord.CheckForSecureSender(addr);
           result = String.Format("Mapping: {0}, Connection: {1}, Security: {2}",
               addr, con, sa);
