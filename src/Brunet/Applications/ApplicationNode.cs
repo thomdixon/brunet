@@ -29,6 +29,7 @@ using Brunet.Symphony;
 
 namespace Brunet.Applications {
   public class ApplicationNode {
+    public readonly NodeConfig Config;
     public readonly StructuredNode Node;
     public readonly IDht Dht;
     public readonly RpcDhtProxy DhtProxy;
@@ -38,8 +39,9 @@ namespace Brunet.Applications {
     public ApplicationNode PrivateNode;
 
     public ApplicationNode(StructuredNode node, IDht dht, RpcDhtProxy dht_proxy,
-        NCService ncservice, SecurityOverlord security_overlord)
+        NCService ncservice, SecurityOverlord security_overlord, NodeConfig nc)
     {
+      Config = nc;
       Node = node;
       Dht = dht;
       DhtProxy = dht_proxy;

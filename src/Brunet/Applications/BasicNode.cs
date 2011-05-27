@@ -285,7 +285,8 @@ namespace Brunet.Applications {
       }
 
       // Create the ApplicationNode
-      ApplicationNode app_node = new ApplicationNode(node, dht, dht_proxy, ncservice, so);
+      ApplicationNode app_node = new ApplicationNode(node, dht, dht_proxy,
+          ncservice, so, node_config);
 
       // Add Edge listeners
       EdgeListener el = null;

@@ -155,7 +155,9 @@ namespace Ipop {
         PublicInfo.UserData["IpopNamespace"] = _ipop_config.IpopNamespace;
       }
 
-      if(_ipop_config.EndToEndSecurity && AppNode.SymphonySecurityOverlord != null) {
+      if(_ipop_config.EndToEndSecurity && !AppNode.Config.Security.SecureEdges &&
+          AppNode.Config.Security.Enabled)
+      {
         _conn_handler = new Brunet.Security.PeerSec.Symphony.SecureConnectionHandler(
             PType.Protocol.IP, AppNode.Node, AppNode.SymphonySecurityOverlord);
       } else {
