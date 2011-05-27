@@ -20,6 +20,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+using Brunet.Collections;
 using Brunet.Connections;
 using Brunet.Messaging;
 using Brunet.Services;
@@ -61,18 +62,18 @@ namespace Brunet.Security.PeerSec.Symphony {
       if(sa == null) {
         return null;
       }
-      return _so.GetAddress(sa);
+      return base.SenderToAddress(sa.Sender);
     }
 
     override protected bool TryGetSender(Address dst, out ISender sender)
     {
       sender = null;
-      var con = GetConnection(dst);
-      if(con == null) {
+      var edge = GetConnection(dst);
+      if(edge == null) {
         return false;
       }
       SecurityAssociation sa = null;
-      if(GetSecureSender(con, out sa)) {
+      if(GetSecureSender(edge, out sa)) {
         sender = sa;
         return true;
       }
@@ -81,6 +82,7 @@ namespace Brunet.Security.PeerSec.Symphony {
 
     override protected void ValidConnection(Connection con)
     {
+      con.StateChangeEvent += ConStateChange;
       SecurityAssociation sa;
       GetSecureSender(con, out sa);
     }
@@ -89,7 +91,7 @@ namespace Brunet.Security.PeerSec.Symphony {
     {
       ISender sender;
       if(!_address_to_sender.TryGetValue(con.Address, out sender)) {
-        sender = _so.CheckForSecureSender(con.Address);
+        sender = _so.CheckForSecurityAssociation(con.State.Edge);
         if(sender == null) {
           return;
         }
@@ -102,7 +104,7 @@ namespace Brunet.Security.PeerSec.Symphony {
 
     protected bool GetSecureSender(Connection con, out SecurityAssociation sa)
     {
-      sa = _so.GetSecureSender(con.Address);
+      sa = _so.CreateSecurityAssociation(con.State.Edge);
       bool ready = false;
       lock(_address_to_sender) {
         if(!_registered.ContainsKey(sa)) {
@@ -118,6 +120,20 @@ namespace Brunet.Security.PeerSec.Symphony {
         }
       }
       return ready;
+    }
+
+    protected void ConStateChange(Connection con,
+        Pair<Connections.ConnectionState, Connections.ConnectionState> cs)
+    {
+      if(cs.First.Edge.Equals(cs.Second.Edge)) {
+        return;
+      }
+
+      if(!_ondemand.ConnectionDesired(con.Address)) {
+        return;
+      }
+      SecurityAssociation sa;
+      GetSecureSender(con, out sa);
     }
 
     protected void SAStateChange(SecurityAssociation sa,

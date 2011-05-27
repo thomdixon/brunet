@@ -30,22 +30,33 @@ namespace Brunet.Simulator {
     /// <summary>First half builds the ring, second half tests the connection handler...</summary>
     public void RingTest() {
       Parameters p = new Parameters("Test", "Test");
-      string[] args = "-b=.2 -c -s=50".Split(' ');
+      string[] args = "-b=.2 -c --secure_senders -s=50".Split(' ');
       Assert.AreNotEqual(-1, p.Parse(args), "Unable to parse" + p.ErrorMessage);
       Simulator sim = new Simulator(p);
       _sim = sim;
       Assert.IsTrue(sim.Complete(true), "Simulation failed to complete the ring");
+
       SimpleTimer.RunSteps(fifteen_mins, false);
-      Node node0 = sim.TakenIDs.Values[0].Node;
+      var nm0 = sim.TakenIDs.Values[0];
       int idx = 1;
-      Node node1 = null;
+      NodeMapping nm1 = null;
       do {
-        node1 = sim.TakenIDs.Values[idx++].Node;
-      } while(Simulator.AreConnected(node0, node1) && idx < sim.TakenIDs.Count);
+        nm1 = sim.TakenIDs.Values[idx++];
+      } while(Simulator.AreConnected(nm0.Node, nm1.Node) && idx < sim.TakenIDs.Count);
+
+      Assert.IsFalse(Simulator.AreConnected(nm0.Node, nm1.Node), "Sanity check");
       var ptype = new PType("chtest");
-      var ch0 = new ConnectionHandler(ptype, (StructuredNode) node0);
-      var ch1 = new ConnectionHandler(ptype, (StructuredNode) node1);
-      ConnectionHandlerTest(node0, node1, ch0, ch1);
+      var ch0 = new ConnectionHandler(ptype, (StructuredNode) nm0.Node);
+      var ch1 = new ConnectionHandler(ptype, (StructuredNode) nm1.Node);
+      ConnectionHandlerTest(nm0.Node, nm1.Node, ch0, ch1);
+
+      SimpleTimer.RunSteps(fifteen_mins * 2, false);
+
+      Assert.IsFalse(Simulator.AreConnected(nm0.Node, nm1.Node), "Sanity check0");
+      ptype = new PType("chtest1");
+      ch0 = new SecureConnectionHandler(ptype, (StructuredNode) nm0.Node, nm0.Sso);
+      ch1 = new SecureConnectionHandler(ptype, (StructuredNode) nm1.Node, nm1.Sso);
+      ConnectionHandlerTest(nm0.Node, nm1.Node, ch0, ch1);
     }
 
     [Test]
@@ -64,8 +75,8 @@ namespace Brunet.Simulator {
       } while(Simulator.AreConnected(nm0.Node, nm1.Node) && idx < sim.TakenIDs.Count);
       Assert.IsFalse(Simulator.AreConnected(nm0.Node, nm1.Node), "Sanity check");
       var ptype = new PType("chtest");
-      var ch0 = new SecureConnectionHandler(ptype, (StructuredNode) nm0.Node, nm0.Sso);
-      var ch1 = new SecureConnectionHandler(ptype, (StructuredNode) nm1.Node, nm1.Sso);
+      var ch0 = new ConnectionHandler(ptype, (StructuredNode) nm0.Node);
+      var ch1 = new ConnectionHandler(ptype, (StructuredNode) nm1.Node);
       ConnectionHandlerTest(nm0.Node, nm1.Node, ch0, ch1);
     }
 

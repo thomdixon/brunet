@@ -42,7 +42,7 @@ namespace Brunet.Security.PeerSec.Symphony {
         CertificateHandler ch, ReqrepManager rrman) :
       base(rsa, ch, rrman)
     {
-      _ch.AddCertificateVerification(new SymphonyVerification(ch));
+      _ch.AddCertificateVerification(new SymphonyVerification(node.ConnectionTable));
       _node = node;
       _address_to_sa = new Dictionary<Address, SecurityAssociation>();
       _sa_to_address = new Dictionary<SecurityAssociation, Address>();

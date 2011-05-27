@@ -125,9 +125,16 @@ namespace Brunet.Services {
     /// <summary>
     virtual protected Address SenderToAddress(ISender sender)
     {
-      Connection con = _node.ConnectionTable.GetConnection(sender as Edge);
+      Connection con = sender as Connection;
       if(con == null) {
-        return null;
+        Edge edge = sender as Edge;
+        if(edge == null) {
+          return null;
+        }
+        con = _node.ConnectionTable.GetConnection(edge);
+        if(con == null) {
+          return null;
+        }
       }
       return con.Address;
     }

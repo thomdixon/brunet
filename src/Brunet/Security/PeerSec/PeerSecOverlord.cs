@@ -141,6 +141,19 @@ namespace Brunet.Security.PeerSec {
       }
     }
 
+    override public SecurityAssociation CheckForSecurityAssociation(ISender sender) {
+      int spi = SecurityPolicy.DefaultSPI;
+      lock(_sync) {
+        if(_spi.ContainsKey(spi)) {
+          var sender_to_sa = _spi[spi];
+          if(sender_to_sa.ContainsKey(sender)) {
+            return sender_to_sa[sender];
+          }
+        }
+      }
+      return null;
+    }
+
     /// <summary>This (idempotently) returns a new SecurityAssociation for the
     /// specified sender using the default SPI and starts it if requested to.</summary>
     override public SecurityAssociation CreateSecurityAssociation(ISender Sender) {
@@ -478,7 +491,9 @@ namespace Brunet.Security.PeerSec {
         SecurityControlMessage scm_reply, ISender return_path,
         ISender low_level_sender)
     {
-      ProtocolLog.WriteIf(ProtocolLog.Security, GetHashCode() + " Received Cookie from: " + low_level_sender);
+      ProtocolLog.WriteIf(ProtocolLog.Security, String.Format(
+            "{0}, Received Cookie from: {1}, In-Cookie: {2}",
+            GetHashCode(), low_level_sender, scm.LocalCookie));
       scm_reply.Type = SecurityControlMessage.MessageType.CookieResponse;
       scm_reply.RemoteCookie = scm.LocalCookie;
       scm_reply.LocalCookie = calc_cookie;
@@ -489,7 +504,9 @@ namespace Brunet.Security.PeerSec {
       }
       ICopyable to_send = new CopyList(SecureControl, scm_reply.Packet);
       return_path.Send(to_send);
-      ProtocolLog.WriteIf(ProtocolLog.Security, GetHashCode() + " Successful Cookie from: " + low_level_sender);
+      ProtocolLog.WriteIf(ProtocolLog.Security, String.Format(
+            "{0}, Successful Cookie from: {1}, Out-Cookie: {2}",
+            GetHashCode(), low_level_sender, calc_cookie));
     }
 
     /// <summary>2a) Receive a CookieResponse that contains a list of CAs, if you have

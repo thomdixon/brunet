@@ -148,6 +148,9 @@ namespace Brunet.Security {
       }
     }
 
+
+    /// <summary></summary>
+    abstract public SecurityAssociation CheckForSecurityAssociation(ISender sender);
     /// <summary></summary>
     abstract public SecurityAssociation CreateSecurityAssociation(ISender sender);
     /// <summary></summary>

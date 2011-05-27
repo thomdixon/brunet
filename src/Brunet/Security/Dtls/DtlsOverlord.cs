@@ -184,6 +184,12 @@ namespace Brunet.Security.Dtls {
     }
 
     // Public overriden methods
+    //
+    override public SecurityAssociation CheckForSecurityAssociation(ISender sender) {
+      DtlsAssociation sa = null;
+      _sender_to_sa.TryGetValue(sender, out sa);
+      return sa;
+    }
 
     override public SecurityAssociation CreateSecurityAssociation(ISender sender)
     {
