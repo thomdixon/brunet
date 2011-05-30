@@ -88,6 +88,16 @@ namespace Brunet.Services {
       return addr;
     }
 
+    public ISender GetSender(Address addr)
+    {
+      if(addr == null) {
+        return null;
+      }
+      ISender sender = null;
+      _address_to_sender.TryGetValue(addr, out sender);
+      return sender;
+    }
+
     virtual public void HandleData(MemBlock data, ISender return_path, object state)
     {
       Address addr = GetAddress(return_path);

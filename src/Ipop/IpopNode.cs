@@ -862,13 +862,9 @@ namespace Ipop {
           return;
         }
         Connection con = AppNode.Node.ConnectionTable.GetConnection(ConnectionType.Structured, addr);
-        if(AppNode.SymphonySecurityOverlord != null) {
-          SecurityAssociation sa = AppNode.SymphonySecurityOverlord.CheckForSecureSender(addr);
-          result = String.Format("Mapping: {0}, Connection: {1}, Security: {2}",
-              addr, con, sa);
-        } else {
-          result = String.Format("Mapping: {0}, Connection: {1}", addr, con);
-        }
+        var sender = _conn_handler.GetSender(addr);
+        result = String.Format("Mapping: {0}, Connection: {1}, Sender: {2}",
+            addr, con, sender);
       } else {
         result = new Exception("Invalid method!");
       }
