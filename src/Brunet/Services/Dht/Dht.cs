@@ -71,7 +71,7 @@ namespace Brunet.Services.Dht {
   /// to place the data back to seal the hole.</remarks>
   public class Dht : IDht {
     /// <summary>The log enabler for the dht.</summary>
-    public static BooleanSwitch DhtLog = new BooleanSwitch("Dht", "Log for Dht!");
+    public static BooleanSwitch DhtLog = new BooleanSwitch("DhtLog", "Log for Dht!");
     /// <summary>Lock for the dht put/get state tables.</summary>
     protected object _sync;
     /// <summary>The RpcManager to perform transactions through.</summary>

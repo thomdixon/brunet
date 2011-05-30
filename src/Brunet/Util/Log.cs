@@ -32,36 +32,34 @@ namespace Brunet.Util {
         new EventBooleanSwitch("ConnectionTable", "Logs connections");
     public static EventBooleanSwitch ConnectionTableLocks = 
         new EventBooleanSwitch("ConnectionTableLocks", "Logs locks in the ConnectionTable");
-    public static EventBooleanSwitch PolicyBasedCO =
-        new EventBooleanSwitch("PolicyBasedCO", "On demand connections.");
-    public static EventBooleanSwitch Exceptions =
-        new EventBooleanSwitch("ERROR", "Logs exceptions");
-    public static EventBooleanSwitch NodeLog =
-        new EventBooleanSwitch("Node", "Log for node");
-    public static EventBooleanSwitch UdpEdge =
-        new EventBooleanSwitch("UdpEdge", "Log for UdpEdge and UdpEdgeListener");
-    public static EventBooleanSwitch NatHandler =
-        new EventBooleanSwitch("NatHandler", "Log for NatHandler");
-    public static EventBooleanSwitch SCO =
-        new EventBooleanSwitch("SCO", "Log for SCO");
-    public static EventBooleanSwitch LinkDebug =
-        new EventBooleanSwitch("LinkDebug", "Log for Link");
-    public static EventBooleanSwitch RelayEdge =
-        new EventBooleanSwitch("RelayEdge", "Log for RelayEdge");
-    public static EventBooleanSwitch Monitor =
-        new EventBooleanSwitch("Monitor", "Log the system monitor");
-    public static EventBooleanSwitch LocalCO =
-        new EventBooleanSwitch("LocalCO", "Log the local connection overlord");
     public static EventBooleanSwitch EdgeClose =
         new EventBooleanSwitch("EdgeClose", "The reason why an edge was closed.");
+    public static EventBooleanSwitch Exceptions =
+        new EventBooleanSwitch("Exceptions", "Logs exceptions");
+    public static EventBooleanSwitch LinkDebug =
+        new EventBooleanSwitch("LinkDebug", "Log for Link");
     public static EventBooleanSwitch MapReduce =
         new EventBooleanSwitch("MapReduce", "Log map-reduce computations");
+    public static EventBooleanSwitch Monitor =
+        new EventBooleanSwitch("Monitor", "Log the system monitor");
+    public static EventBooleanSwitch NodeLog =
+        new EventBooleanSwitch("NodeLog", "Log for node");
+    public static EventBooleanSwitch NatHandler =
+        new EventBooleanSwitch("NatHandler", "Log for NatHandler");
+    public static EventBooleanSwitch Pathing =
+        new EventBooleanSwitch("Pathing", "Log for pathing");
+    public static EventBooleanSwitch PolicyBasedCO =
+        new EventBooleanSwitch("PolicyBasedCO", "On demand connections.");
+    public static EventBooleanSwitch RelayEdge =
+        new EventBooleanSwitch("RelayEdge", "Log for RelayEdge");
+    public static EventBooleanSwitch SCO =
+        new EventBooleanSwitch("SCO", "Log for SCO");
     public static EventBooleanSwitch Security =
         new EventBooleanSwitch("Security", "Security logging.");
     public static EventBooleanSwitch SecurityExceptions =
         new EventBooleanSwitch("SecurityExceptions", "Security Handling Exception logging.");
-    public static EventBooleanSwitch Pathing =
-        new EventBooleanSwitch("Pathing", "Log for pathing");
+    public static EventBooleanSwitch UdpEdge =
+        new EventBooleanSwitch("UdpEdge", "Log for UdpEdge and UdpEdgeListener");
 
     public static bool CTL_enabled = false;
 
