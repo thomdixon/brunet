@@ -52,6 +52,7 @@ namespace Ipop.Dht {
     {
       DhtAddressResolver dar = new DhtAddressResolver(AppNode.Dht, _ipop_config.IpopNamespace);
       Shutdown.OnExit += dar.Stop;
+      dar.MissedMapping += MissedMapping;
       _address_resolver = dar;
 
       _connected = false;

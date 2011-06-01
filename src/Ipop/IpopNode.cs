@@ -22,6 +22,7 @@ THE SOFTWARE.
 
 using Brunet;
 using Brunet.Applications;
+using Brunet.Collections;
 using Brunet.Connections;
 using Brunet.Messaging;
 using Brunet.Security;
@@ -264,11 +265,7 @@ namespace Ipop {
       if(!_address_resolver.Check(ipp.SourceIP, addr)) {
         Address other = _address_resolver.Resolve(ipp.SourceIP);
         if(other == null) {
-          ProtocolLog.WriteIf(IpopLog.ResolverLog, String.Format(
-              "Notifying remote node of missing address: {0} : {1}",
-              addr, ipp.SSourceIP));
-          ISender sender = new AHExactSender(AppNode.Node, addr);
-          AppNode.Node.Rpc.Invoke(sender, null, "Ipop.NoSuchMapping", ipp.SSourceIP);
+          MissedMapping(ipp.SSourceIP, addr);
           return;
         } else if(other != addr) {
           ProtocolLog.WriteIf(IpopLog.ResolverLog, String.Format(
@@ -798,6 +795,14 @@ namespace Ipop {
       ThreadPool.QueueUserWorkItem(wcb);
     }
 
+    protected void MissedMapping(string ip, Address addr)
+    {
+      ProtocolLog.WriteIf(IpopLog.ResolverLog, String.Format(
+          "Notifying remote node of missing address: {0} : {1}", ip, addr));
+      ISender sender = new AHExactSender(AppNode.Node, addr);
+      AppNode.Node.Rpc.Invoke(sender, null, "Ipop.NoSuchMapping", ip);
+    }
+
     /// <summary>Called when an ethernet address has had its IP address changed
     /// or set for the first time.</summary>
     protected virtual void UpdateMapping(MemBlock ether_addr, MemBlock ip_addr)
@@ -915,10 +920,14 @@ namespace Ipop {
     }
   }
 
+  public delegate void MappingDelegate(string ip, Address addr);
+
   /// <summary>This interface is used for IP Address to Brunet address translations.
   /// It must implement the method GetAddress.  All IpopNode sub classes MUST
   /// have some IAddressResolver.</summary>
   public interface IAddressResolver {
+    /// <summary> Event to notify that no mapping was found. </summary>
+    event MappingDelegate MissedMapping;
     /// <summary>Takes an IP and returns the mapped Brunet.Address</summary>
     /// <param name="ip"> the MemBlock representation of the IP</param>
     /// <returns>translated Brunet.Address</returns>

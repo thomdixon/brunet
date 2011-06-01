@@ -37,10 +37,13 @@ namespace Ipop.Dht {
   /// Brunet Dht, where entries are listed in the dht by means of the 
   /// DhtDHCPServer.</summary>
   public class DhtAddressResolver: IAddressResolver {
+    public event MappingDelegate MissedMapping;
     /// <summary>Clean up the cache entries every 10 minutes.</summary>
     public const int CLEANUP_TIME_MS = 600000;
-    /// <summary>Address cache</summary>
-    protected readonly TimeBasedCache<MemBlock, Address> _cache;
+    /// <summary>Cache based upon Dht and thus verified</summary>
+    protected readonly TimeBasedCache<MemBlock, Address> _verified_cache;
+    /// <summary>Cache based upon check calls</summary>
+    protected readonly TimeBasedCache<MemBlock, Address> _incoming_cache;
     /// <summary>A lock synchronizer for the hashtables and cache.</summary>
     protected readonly Object _sync = new Object();
     /// <summary>Failed query attempts.</summary>
@@ -62,7 +65,8 @@ namespace Ipop.Dht {
     {
       _dht = dht;
       _ipop_namespace = ipop_namespace;
-      _cache = new TimeBasedCache<MemBlock, Address>(CLEANUP_TIME_MS);
+      _verified_cache = new TimeBasedCache<MemBlock, Address>(CLEANUP_TIME_MS);
+      _incoming_cache = new TimeBasedCache<MemBlock, Address>(CLEANUP_TIME_MS);
       _attempts = new Dictionary<MemBlock, int>();
       _queued = new Dictionary<MemBlock, bool>();
       _mapping = new Dictionary<Channel, MemBlock>();
@@ -76,13 +80,19 @@ namespace Ipop.Dht {
     /// one exists in the cache</returns>
     public Address Resolve(MemBlock ip)
     {
-      Address addr;
+      Address stored_addr;
       bool update;
-      bool success = _cache.TryGetValue(ip, out addr, out update);
-      if(update || !success) {
+      bool contains = _verified_cache.TryGetValue(ip, out stored_addr, out update);
+      if(!contains) {
+        contains = _incoming_cache.TryGetValue(ip, out stored_addr, out update);
+        _incoming_cache.Update(ip, stored_addr);
+        update = true;
+      }
+
+      if(update) {
         Miss(ip);
       }
-      return addr;
+      return stored_addr;
     }
 
     /// <summary>Is the right person sending me this packet?</summary>
@@ -90,24 +100,21 @@ namespace Ipop.Dht {
     /// <param name="addr">The Brunet.Address source.</summary>
     public bool Check(MemBlock ip, Address addr)
     {
-      // Check current results
-      Address stored_addr = null;
-      bool update;
-      bool exists = _cache.TryGetValue(ip, out stored_addr, out update);
-      if(addr.Equals(stored_addr)) {
-        if(update) {
-          Miss(ip);
+      Address stored_addr = Resolve(ip);
+
+      if(stored_addr != null) {
+        if(addr.Equals(stored_addr)) {
+          return true;
+        } else{
+          throw new AddressResolutionException(String.Format(
+                "IP:Address mismatch, expected: {0}, got: {1}",
+                addr, stored_addr), AddressResolutionException.Issues.Mismatch);
         }
-        return true;
-      } else if(!exists) {
-        Miss(ip);
-        return false;
-      } else {
-        // Bad mapping
-        throw new AddressResolutionException(String.Format(
-              "IP:Address mismatch, expected: {0}, got: {1}",
-              addr, stored_addr), AddressResolutionException.Issues.Mismatch);
       }
+
+      // No mapping, so use the given mapping
+      _incoming_cache.Update(ip, addr);
+      return true;
     }
 
     /// <summary>This is called if the cache's don't have an Address mapping.
@@ -194,12 +201,21 @@ namespace Ipop.Dht {
 
       lock(_sync) {
         if(addr != null) {
-          _cache.Update(ip, addr);
+          _verified_cache.Update(ip, addr);
           _attempts.Remove(ip);
         }
 
         _queued.Remove(ip);
         _mapping.Remove(queue);
+      }
+
+      if (addr == null) {
+        var handler = MissedMapping;
+        if(handler != null) {
+          if(_incoming_cache.TryGetValue(ip, out addr)) {
+            handler(ips, addr);
+          }
+        }
       }
     }
 
@@ -207,7 +223,7 @@ namespace Ipop.Dht {
     /// will need to be constructed, if used in the same process.</summary>
     public void Stop()
     {
-      _cache.Stop();
+      _verified_cache.Stop();
     }
   }
 }

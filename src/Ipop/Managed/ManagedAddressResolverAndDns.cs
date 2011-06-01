@@ -43,6 +43,7 @@ namespace Ipop.Managed {
   /// ITranslator. It provides most functionality needed by ManagedIpopNode.
   /// </summary>
   public class ManagedAddressResolverAndDns : Dns, IAddressResolver, ITranslator {
+    public event MappingDelegate MissedMapping;
     /// <summary>The node to do ping checks on.</summary>
     protected StructuredNode _node;
     /// <summary>Contains ip:hostname mapping.</summary>
