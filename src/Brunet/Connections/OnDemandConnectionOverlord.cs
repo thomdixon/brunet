@@ -109,13 +109,18 @@ namespace Brunet.Connections {
 
     override protected void ObtainedConnection(Connection con)
     {
-      if(ConnectionDesired(con.Address)) {
+      bool con_desired = ConnectionDesired(con.Address);
+
+      if(con_desired || con.ConType.Equals(Type)) {
         if(ProtocolLog.PolicyBasedCO.Enabled) {
           ProtocolLog.Write(ProtocolLog.PolicyBasedCO, String.Format(
-                            "Connection: {0} at {1}", con, DateTime.UtcNow));
+                            "Connection: {0} at {1}, Desired: {2}",
+                            con, DateTime.UtcNow, ConnectionDesired(con.Address)));
         }
-      } else if(con.ConType.Equals(Type)) {
-        DelayedRemove(con.Address, "Undesired");
+      }
+
+      if(!con_desired && con.ConType.Equals(Type)) {
+        Set(con.Address);
       }
     }
 
