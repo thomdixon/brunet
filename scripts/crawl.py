@@ -64,7 +64,7 @@ class Crawler:
         print "Could not find a matching namespace"
         pass
 
-    self.rpc = xmlrpclib.Server("http://127.0.0.1:" + port + "/" + path)
+    self.rpc_path = "http://127.0.0.1:%s/%s" % (port, path)
     # access to the "nodes" table
     self.lock = thread.allocate_lock()
     # sort of like a "join" statement
@@ -72,8 +72,16 @@ class Crawler:
     self.nodes = {}
     self.attempts = 3
 
+  def localproxy(self, cmd):
+    rpc = xmlrpclib.Server(self.rpc_path)
+    return rpc.localproxy(cmd)
+
+  def proxy(self, node, cmd):
+    rpc = xmlrpclib.Server(self.rpc_path)
+    return rpc.proxy(node, 3, 1, cmd)
+
   def start(self):
-    node = self.rpc.localproxy("sys:link.GetNeighbors")['self']
+    node = self.localproxy("sys:link.GetNeighbors")['self']
     start = pybru.Address(node)
     # we're starting, we'll wait for the last guy to release this lock
     self.done.acquire()
@@ -89,12 +97,13 @@ class Crawler:
     # query the node and parse the results
     while attempts > 0:
       try:
-        res = self.rpc.proxy(node, 3, 1, "Information.Info")
+        res = self.proxy(node, "Information.Info")
       except:
+        print sys.exc_info()
         # Means the remote side didn't support the operation, empty means no response
         res = {"type": "bad user"}
         try:
-          res["neighbors"] = self.rpc.proxy(node, 3, 1, "sys:link.GetNeighbors")[0]
+          res["neighbors"] = self.proxy(node, "sys:link.GetNeighbors")[0]
         except:
           res["neighbors"] = {}
         res = [res]
