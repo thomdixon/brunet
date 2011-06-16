@@ -33,7 +33,8 @@ using System.Collections.Specialized;
 using Brunet.Transport;
 using Brunet.Concurrent;
 using Brunet.Collections;
-using BM = Brunet.Messaging;
+using Brunet.Messaging;
+using Brunet.Util;
 
 namespace Brunet.Connections {
 
@@ -62,6 +63,12 @@ namespace Brunet.Connections {
       PeerLinkMessage = lm;
       StatusMessage = sm;
       Disconnected = discon;
+    }
+
+    public override string ToString()
+    {
+      return String.Format("Edge: {0}, PLM: {1}, SM: {2}, Disconnected: {3}",
+          Edge, StatusMessage, PeerLinkMessage, Disconnected);
     }
   }
 
@@ -138,6 +145,8 @@ namespace Brunet.Connections {
         }
       });
       if( res.First != res.Second ) {
+        ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
+              "Abort called on {0}", this));
         //Only send the event if there is an actual change
         var ev = StateChangeEvent;
         if( null != ev ) {
@@ -150,7 +159,7 @@ namespace Brunet.Connections {
      * Idempotent (calling it twice is the same as once).
      * @return the old state, new state pair.
      */
-    public Pair<ConnectionState,ConnectionState> Close(BM.RpcManager rpc, string reason) {
+    public Pair<ConnectionState,ConnectionState> Close(RpcManager rpc, string reason) {
       var old_new = Abort();
       if( old_new.First.Disconnected != true ) {
         //Now try to tell the other node:
@@ -180,6 +189,8 @@ namespace Brunet.Connections {
         var new_state = new ConnectionState(e, old_state.StatusMessage, lm, false);
         return new_state;
       });
+      ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
+            "SetEdge called on {0}, old Edge: {1}", this, res.First.Edge));
       var ev = StateChangeEvent;
       if( null != ev ) {
         ev(this, res);
@@ -194,6 +205,8 @@ namespace Brunet.Connections {
         return cs;
       });
       if( res.First != res.Second ) {
+        ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
+              "SetState called on {0}, new state {1}, old state {1}", this, res.Second, res.First));
         //Only send the event if there is an actual change
         var ev = StateChangeEvent;
         if( null != ev ) {
@@ -212,6 +225,8 @@ namespace Brunet.Connections {
         var new_state = new ConnectionState(old_state.Edge, sm, old_state.PeerLinkMessage, false);
         return new_state;
       });
+      ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
+            "SetStatus called on {0}, old status: {1}, new status: {2}", this, res.First.StatusMessage, sm));
       var ev = StateChangeEvent;
       if( null != ev ) {
         ev(this, res);
