@@ -62,22 +62,13 @@ namespace Brunet.Connections
 
     protected readonly Node _node;
 
-    public class CphState : ILinkLocker {
+    public class CphState {
       public readonly Edge Edge;
       public readonly LinkMessage LM;
-      protected Address _target_lock;
-      public Object TargetLock {
-        get { return _target_lock; }
-        set { _target_lock = (Address) value; }
-      }
 
       public CphState(Edge e, LinkMessage lm) {
         Edge = e;
         LM = lm;
-      }
-
-      public bool AllowLockTransfer(Address a, string contype, ILinkLocker new_locker) {
-        return false;
       }
     }
 
@@ -466,40 +457,6 @@ namespace Brunet.Connections
         err = new ErrorMessage(ErrorMessage.ErrorCode.Disconnecting,
                                String.Format("I am disconnecting. local: {0}", local_add));
       }
-      else {
-        /*
-         * Now we go to the ConnectionTable and try to
-         * get a lock on the address so we can go forward
-         * with the linking
-         */
-        try {
-          if(ProtocolLog.LinkDebug.Enabled)
-            ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-              "ConnectionPacketHandler - Trying to lock connection table: {0},{1}",
-                                  lm.Local.Address, lm.ConTypeString));
-
-          _node.LockMgr.Lock( lm.Local.Address, lm.ConTypeString, cph );
-          if(ProtocolLog.LinkDebug.Enabled)
-            ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-              "ConnectionPacketHandler - Successfully locked connection table: {0},{1}",
-              lm.Local.Address, lm.ConTypeString));
-        }
-        catch(ConnectionExistsException) {
-          //We already have a connection of this type to this address
-          err = new ErrorMessage(ErrorMessage.ErrorCode.AlreadyConnected,
-                               String.Format("We are already connected: {0}", local_add));
-        }
-        catch(CTLockException) {
-          if(ProtocolLog.LinkDebug.Enabled)
-            ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-              "ConnectionPacketHandler - Cannot lock connection table: {0},{1}",
-              lm.Local.Address, lm.ConTypeString));
-          //Lock can throw this type of exception
-          err = new ErrorMessage(ErrorMessage.ErrorCode.InProgress,
-                                 "Address: " + lm.Local.Address.ToString() +
-                                 " is locked");
-        }
-      }
       return ( err == null );
     }
 
@@ -516,9 +473,6 @@ namespace Brunet.Connections
         if( cphstate != null ) {
           _edge_to_cphstate.Remove(edge);
         }
-      }
-      if( cphstate != null ) {
-        _node.LockMgr.Unlock( cphstate.LM.ConTypeString, cphstate );
       }
     }
   }

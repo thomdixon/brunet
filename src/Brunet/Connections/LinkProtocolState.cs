@@ -40,7 +40,7 @@ namespace Brunet.Connections
    * one particular attempt, on one particular Edge, which
    * was created using one TransportAddress
    */
-  public class LinkProtocolState : TaskWorker, ILinkLocker {
+  public class LinkProtocolState : TaskWorker {
     //====================
     // Write Once Variables.
     //====================
@@ -105,13 +105,6 @@ namespace Brunet.Connections
       }
     }
     
-    protected Address _target_lock;
-
-    public Object TargetLock {
-      get { return _target_lock; }
-      set { _target_lock = (Address) value; }
-    }
-
     //====================
     // These variables never change after the constructor
     //====================
@@ -148,7 +141,6 @@ namespace Brunet.Connections
       _linker = l;
       _node = l.LocalNode;
       _contype = l.ConType;
-      _target_lock = null;
       _lm_reply = new WriteOnce<LinkMessage>();
       _x = new WriteOnce<Exception>();
       _con = new WriteOnce<Connection>();
@@ -159,52 +151,6 @@ namespace Brunet.Connections
       _result = Result.None;
     }
 
-    //Make sure we are unlocked.
-    ~LinkProtocolState() {
-      if( _target_lock != null ) {
-        if(ProtocolLog.LinkDebug.Enabled) {
-              ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-                "Lock released by destructor"));
-        }
-      }
-      /* In .NET, there is an obervable bug, where there exists a LPS that
-       * has no origin and all member properties are null.  This saves the
-       * garbage collector from throwing an exception.
-       */
-      if(_node != null) {
-        Unlock();
-      }
-    }
-
-    /**
-     * Note that a LinkProtocolState only gets a lock *AFTER* it has
-     * received a LinkMessageReply.  Prior to that, the Linker that
-     * created it holds the lock (if the _linker.Target is not null).
-     *
-     * So, given that we are being asked to transfer a lock, we must
-     * have already gotten our LinkMessageReply set, or we wouldn't
-     * hold the lock in the first place.
-     *
-     * So, we only transfer locks to other Linkers when we are finished
-     * since us holding a lock means we have already head some
-     * communication from the other side.
-     * 
-     * Since the CT.Lock and CT.Unlock methods can't be called when this
-     * is being called, we know that _target_lock won't change during
-     * this method.
-     */
-    public bool AllowLockTransfer(Address a, string contype, ILinkLocker l)
-    {
-      bool hold_lock = (a.Equals( _target_lock ) && contype == _contype);
-      if( false == hold_lock ) {
-        //This is a bug.
-        throw new Exception(String.Format("We don't hold the lock: {0}", a));
-      }
-      if( (l is Linker) && IsFinished ) {
-        return true;
-      }
-      return false;
-    }
     /**
      * There are only four ways we can get here:
      * 
@@ -252,47 +198,38 @@ namespace Brunet.Connections
       //Set the result:
       _result = res;
       
-      try {
-        //Check to see if we need to close the edge
-        if( _con.IsSet == false ) {
-          /*
-           * We didn't get a complete connection,
-           * but we may have heard some response.  If so
-           * close the edge gracefully.
-           */
-          if (LinkMessageReply != null) {
-            //Let's be nice, send a Close message, but don't add this connection:
-            Connection tmp_c = new Connection(_e, LinkMessageReply.Local.Address,
-                                        _contype, null, LinkMessageReply);
-            tmp_c.Close(_node.Rpc, "From LPS, did not complete a connection.");
-          }
-          else {
-            /*
-             * We never heard from the other side, so we will assume that further
-             * packets will only waste bandwidth
-             */
-            _e.Close();
-          }
-          if(ProtocolLog.LinkDebug.Enabled) {
-            ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-              "LPS: {0} got no connection", _node.Address));
-          }
+      //Check to see if we need to close the edge
+      if( _con.IsSet == false ) {
+        /*
+         * We didn't get a complete connection,
+         * but we may have heard some response.  If so
+         * close the edge gracefully.
+         */
+        if (LinkMessageReply != null) {
+          //Let's be nice, send a Close message, but don't add this connection:
+          Connection tmp_c = new Connection(_e, LinkMessageReply.Local.Address,
+                                      _contype, null, LinkMessageReply);
+          tmp_c.Close(_node.Rpc, "From LPS, did not complete a connection.");
         }
         else {
-          if(ProtocolLog.LinkDebug.Enabled) {
-            ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-              "LPS: {0} got connection: {1}", _node.Address, _con.Value));
-          }
+          /*
+           * We never heard from the other side, so we will assume that further
+           * packets will only waste bandwidth
+           */
+          _e.Close();
         }
-        //This could throw an exception, but make sure we unlock if it does.
-        FireFinished();
+        if(ProtocolLog.LinkDebug.Enabled) {
+          ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
+            "LPS: {0} got no connection", _node.Address));
+        }
       }
-      finally {
-        /**
-         * We have to make sure the lock is eventually released:
-         */
-        this.Unlock();
+      else {
+        if(ProtocolLog.LinkDebug.Enabled) {
+          ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
+            "LPS: {0} got connection: {1}", _node.Address, _con.Value));
+        }
       }
+      FireFinished();
     }
 
     /**
@@ -323,7 +260,7 @@ namespace Brunet.Connections
           result = Result.ProtocolError;
           if(ProtocolLog.LinkDebug.Enabled)
             ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-              "Already connected: {0}, {1}", _contype, _target_lock));
+              "Already connected: {0}, {1}", _contype));
         }
         else {
           //The other guy thinks we are connected, but we disagree,
@@ -343,7 +280,7 @@ namespace Brunet.Connections
          */
         if(ProtocolLog.LinkDebug.Enabled)
           ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-            "LPS: from {0} target mismatch: {1}", _e, _target_lock));
+            "LPS: from {0} target mismatch", _e));
         result = Result.MoveToNextTA;
       }
       else if ( c == (int)ErrorMessage.ErrorCode.ConnectToSelf ) {
@@ -366,13 +303,6 @@ namespace Brunet.Connections
             "Unrecognized error code: {0}", c));
       }
       return result;
-    }
-
-    /**
-     * Unlock any lock which is held by this state
-     */
-    public void Unlock() {
-      _node.LockMgr.Unlock( _contype, this );
     }
 
     protected LinkMessage MakeLM() {
@@ -455,12 +385,6 @@ namespace Brunet.Connections
        * once, and once it happens a future attempt will throw an exception
        */
       _lm_reply.Value = lm;
-      /*
-       * This throws an exception if:
-       * 0) we can't get the lock.
-       * 1) we already have set _target_lock to something else
-       */
-      _node.LockMgr.Lock( lm.Local.Address, _contype, this );
     }
 
     /**
@@ -509,24 +433,6 @@ namespace Brunet.Connections
          */
         _x.Value = x;
         Finish( GetResultForErrorCode(x.Code) );
-      }
-      catch(ConnectionExistsException x) {
-        if(ProtocolLog.LinkDebug.Enabled) {
-          ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-            "LPS.LinkCloseHandlerHandler edge: {1} Exception: {0}", x, _e));
-        }
-        /* We already have a connection */
-        _x.Value = x;
-        Finish( Result.ProtocolError );
-      }
-      catch(CTLockException x) {
-        if(ProtocolLog.LinkDebug.Enabled) {
-          ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-            "LPS.LinkCloseHandlerHandler edge: {1} Exception: {0}", x, _e));
-        }
-        //This is thrown when ConnectionTable cannot lock.  Lets try again:
-        _x.Value = x;
-        Finish( Result.RetryThisTA );
       }
       catch(LinkException x) {
         if(ProtocolLog.LinkDebug.Enabled) {

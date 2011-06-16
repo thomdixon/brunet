@@ -60,7 +60,7 @@ namespace Brunet.Connections
    * 
    */
 
-  public class Linker : BC.TaskWorker, ILinkLocker
+  public class Linker : BC.TaskWorker
   {
 
 //////////////////////////////////////////
@@ -88,13 +88,6 @@ namespace Brunet.Connections
     protected readonly BC.LockFreeQueue<TransportAddress> _ta_queue;
     protected readonly Node _local_n;
     public Node LocalNode { get { return _local_n; } }
-
-    public Object TargetLock {
-      get { return _target_lock; }
-      set { _target_lock = (Address) value; }
-    }
-
-    protected Address _target_lock;
 
     protected readonly Address _target;
     /** If we know the address of the node we are trying
@@ -126,11 +119,6 @@ namespace Brunet.Connections
      * This is where we put all the tasks we are working on
      */
     protected readonly BC.TaskQueue _task_queue;
-    /**
-     * When there are no active LinkProtocolState TaskWorker objects,
-     * we should not be holding the lock.
-     */
-    protected int _active_lps_count;
     
     //Don't allow the FinishEvent to be fired until we have 
     //started all the initial TaskWorkers
@@ -430,7 +418,6 @@ namespace Brunet.Connections
     {
       _task = new LinkerTask(local.Address, target, ct, task_diff);
       _local_n = local;
-      _active_lps_count = 0;
       //this TaskQueue starts new tasks in the announce thread of the node.
       _task_queue = new NodeTaskQueue(local);
       _task_queue.EmptyEvent += this.FinishCheckHandler;
@@ -548,71 +535,6 @@ namespace Brunet.Connections
       return sb.ToString();
     }
 
-    /**
-     * Allow if we are transfering to a LinkProtocolState or ConnectionPacketHandler
-     * Note this method does not change anything, if the transfer is done, it
-     * is done by the ConnectionTable while it holds its lock.
-     */
-    public bool AllowLockTransfer(Address a, string contype, ILinkLocker l) {
-      bool allow = false;
-      bool hold_lock = (a.Equals( _target_lock ) && contype == _contype);
-      if( false == hold_lock ) {
-        //We don't even hold this lock!
-        throw new Exception(
-                            String.Format("{2} asked to transfer a lock({0}) we don't hold: ({1})",
-                                          a, _target_lock, this));
-      }
-      if( l is Linker ) {
-        //Never transfer to another linker:
-      }
-      else if ( l is ConnectionPacketHandler.CphState ) {
-      /**
-       * The ConnectionPacketHandler only locks when it
-       * has actually received a packet.  This is a "bird in the
-       * hand" situation, however, if both sides in the double
-       * link case transfer the lock, then we have accomplished
-       * nothing.
-       *
-       * There is a specific case to worry about: the case of
-       * a firewall, where only one node can contact the other.
-       * In this case, it may be very difficult to connect if
-       * we don't eventually transfer the lock to the
-       * ConnectionPacketHandler.  In the case of bi-directional
-       * connectivity, we only transfer the lock if the
-       * address we are locking is greater than our own (which
-       * clearly cannot be true for both sides).
-       * 
-       * To handle the firewall case, we keep count of how
-       * many times we have been asked to transfer the lock.  On
-       * the third time we are asked, we assume we are in the firewall
-       * case and we allow the transfer, this is just a hueristic.
-       */
-        int reqs = Interlocked.Increment(ref _cph_transfer_requests);
-        if ( (reqs >= 3 ) || ( a.CompareTo( LocalNode.Address ) > 0) ) {
-          allow = true;
-        }
-      }
-      else if( l is LinkProtocolState ) {
-        LinkProtocolState lps = (LinkProtocolState)l;
-        /**
-         * Or Transfer the lock to a LinkProtocolState if:
-         * 1) We created this LinkProtocolState
-         * 2) The LinkProtocolState has received a packet
-         */
-        if( (lps.Linker == this ) && ( lps.LinkMessageReply != null ) ) {
-          allow = true;
-        }
-      }
-#if LINK_DEBUG
-      if (BU.ProtocolLog.LinkDebug.Enabled) {
-        BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug,
-                            String.Format("{0}: Linker({1}) {2}: transfering lock on {3} to {4}",
-                              _local_n.Address, _lid, (_target_lock == null), a, l));
-      }
-#endif
-      return allow;
-    }
-
 //////////////////
 ///
 /// Protected/Private methods
@@ -638,29 +560,11 @@ namespace Brunet.Connections
         
         next_task = new LinkProtocolState(this, ew.TA, e);
         next_task.FinishEvent +=  this.LinkProtocolStateFinishHandler;
-        //Keep a proper track of the active LinkProtocolStates:
-        Interlocked.Increment(ref _active_lps_count);
-      }
-      catch(ConnectionExistsException) {
-        //We already have a connection to the target
-        close_edge = true;
       }
       catch(LinkException) {
         //This happens if SetTarget sees that we are already connected
         //Our only choice here is to close the edge and give up.
         close_edge = true;
-      }
-      catch(CTLockException) {
-        /*
-         * SetTarget could not get the lock on the address.
-         * Try again later
-         */
-        close_edge = true;
-        next_task = GetRestartState( ew.TA );
-        if( next_task == null ) {
-          //We've restarted too many times:
-          next_task = StartAttempt( NextTA() );
-        }
       }
       catch(EdgeException) {
         /*
@@ -699,7 +603,6 @@ namespace Brunet.Connections
     protected void FinishCheckHandler(object taskqueue, EventArgs args)
     {
       if( _hold_fire == 0 ) {
-        Unlock();
 #if LINK_DEBUG
         if (BU.ProtocolLog.LinkDebug.Enabled) {
           BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug, 
@@ -800,14 +703,6 @@ namespace Brunet.Connections
        //We have some new task to start
        _task_queue.Enqueue(next_task);
      }
-     int current_active = Interlocked.Decrement(ref _active_lps_count);
-     if( current_active == 0 ) {
-       //We have finished handling this lps finishing,
-       //if we have not started another yet, we are not
-       //going to right away.  In the mean time, release
-       //the lock
-       Unlock();
-     }
    }
 
    /**
@@ -845,7 +740,6 @@ namespace Brunet.Connections
     }
 
     /**
-     * Set the _target_lock member variable and check for sanity
      * We only set the target if we can get a lock on the address
      * We can call this method more than once as long as we always
      * call it with the same value for target
@@ -864,12 +758,6 @@ namespace Brunet.Connections
       if( ConnectionInTable ) {
         throw new LinkException("Connection already present");
       }
-      /*
-       * This throws an exception if:
-       * 0) we can't get the lock.
-       * 1) we already have set _target_lock to something else
-       */
-      LocalNode.LockMgr.Lock( _target, _contype, this);
     }
     
     /**
@@ -922,37 +810,10 @@ namespace Brunet.Connections
         next_task = new EdgeWorker(_local_n, next_ta);
         next_task.FinishEvent += this.EdgeWorkerHandler;
       }
-      catch(CTLockException) {
-        /*
-         * If we cannot get a lock on the address in SetTarget()
-         * we wait and and try again
-         */
-#if LINK_DEBUG
-        if (BU.ProtocolLog.LinkDebug.Enabled) {
-          BU.ProtocolLog.Write(BU.ProtocolLog.LinkDebug, 
-            String.Format("{0}: Linker ({1}) failed to lock {2}", _local_n.Address, _lid, _target));
-        }
-#endif
-        next_task = GetRestartState(next_ta);
-      }
-      catch(ConnectionExistsException) {
-        //We already have a connection to the target
-      }
       catch(Exception) {
 
       }
       return next_task;
-    }
-
-    /**
-     * If we hold a lock permanently, we may prevent connections
-     * to a given address
-     * This is called to release a lock from the ConnectionTable.
-     * If the lock is not held, it is still safe to call this method
-     * (in which case nothing happens).
-     */
-    protected void Unlock() {
-      LocalNode.LockMgr.Unlock( _contype, this );
     }
   }
 }

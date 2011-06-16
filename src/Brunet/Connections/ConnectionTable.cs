@@ -1202,14 +1202,6 @@ namespace Brunet.Connections
   }
 
   /**
-   * Thrown when someone tries to lock an address
-   * but it is already locked
-   */
-  public class CTLockException : System.Exception {
-    public CTLockException(string s) : base(s) { }
-  }
-
-  /**
    * Thrown when we try to Add a connection that is already
    * present, returns the existing connection
    */
@@ -1233,19 +1225,6 @@ namespace Brunet.Connections
   public class ConnectionTableTest
   {
     public ConnectionTableTest() { }
-    public class TestLinkLocker : ILinkLocker {
-      protected readonly bool _allow;
-      protected Address _target_lock;
-      public Object TargetLock {
-        get { return _target_lock; }
-        set { _target_lock = (Address) value; }
-      }
-      public TestLinkLocker(bool allow) { _allow = allow; }
-      public bool AllowLockTransfer(Address a, string t, ILinkLocker l) {
-        if( _allow ) { TargetLock = null; }
-        return _allow;
-      }
-    }
 
     [Test]
     public void LoopTest() {
