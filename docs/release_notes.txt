@@ -1,4 +1,200 @@
 ===============================================================================
+Revision 9.6.0
+-------------------------------------------------------------------------------
+- New connection establishment code helps with better NAT traversal
+- Incompatible with 9.5 branch
+===============================================================================
+Revision 9.5.20
+-------------------------------------------------------------------------------
+- ConnectionHandler has a more robust handling of ISender -> Address
+- ConnectionHandler shouldn't use Edges for compatibility with old IPOP code
+- OnDemand calls set on an undesired connection instead of close, it helps
+  with Condor stability
+===============================================================================
+Revision 9.5.19
+-------------------------------------------------------------------------------
+- OnDemand is triggered for incoming and outgoing messages
+- SymphonySecurity wasn't properly sharing secure AHSender (overlay sender)
+- ConnectionHandler which behaves similar to AHSender but only routes through
+  PtP senders, guaranteeing better performance and simpler behavior
+- Added ConnectionHandler to IPOP
+===============================================================================
+Revision 9.5.18
+-------------------------------------------------------------------------------
+- Reformated a statement so GroupVPN would be started on Nimus
+===============================================================================
+Revision 9.5.17
+-------------------------------------------------------------------------------
+- Security could start the same SA many times, creating significant overhead
+- UdpEL wasn't checking if the Monitor log was enabled during startup
+- Added some Simulator Tasks for connection watching
+===============================================================================
+Revision 9.5.16
+-------------------------------------------------------------------------------
+- Fixed a race condition in the GroupVPN script
+===============================================================================
+Revision 9.5.15
+-------------------------------------------------------------------------------
+- GroupVPN Linux scripts create a tun device if one doesn't exist
+===============================================================================
+Revision 9.5.14
+-------------------------------------------------------------------------------
+- Fixed blocking bug in MappingMissing in DhtIpopNode
+===============================================================================
+Revision 9.5.13
+-------------------------------------------------------------------------------
+- Removed AHSender -> Node -> AHHandler, now AHSender -> AHHandler
+  (performance enhancement)
+- Bug in GroupVPN contents if file didn't exist
+- Improved logging for deadlocks in Node
+===============================================================================
+Revision 9.5.12
+-------------------------------------------------------------------------------
+- Improved Security logging
+- Added debugging scripts
+- Fixed a bug with the restarting of GroupVPN, it wasn't properly loading
+  stored DHT contents
+- Security cookies for AHSenders are based upon P2P address
+- Reduced the number of unhandled exceptions in Security
+- Rewrote Reseting of the Security state
+===============================================================================
+Revision 9.5.11
+-------------------------------------------------------------------------------
+- Security was leaving stale states and peers weren't reconnecting...
+===============================================================================
+Revision 9.5.10
+-------------------------------------------------------------------------------
+- PolicyBasedCO was spinning on ConnectorEndHandler
+- PeerSecAssociation was clearing out dhe messages for no good reason
+===============================================================================
+Revision 9.5.9
+-------------------------------------------------------------------------------
+- IPOP has the ability to enable logging via RPC
+- Ability to query IPOP / Security about the state of a connection
+===============================================================================
+Revision 9.5.8
+-------------------------------------------------------------------------------
+- Logging can be enabled via RPC
+- Dynamic send queue for UdpEL
+- Proper use of TryGetValue for OnDemandCO -- guarantees proper behavior
+- Removed exceptions from TimeBasedCache
+- Switched print of Send queue message to logging message
+===============================================================================
+Revision 9.5.7
+-------------------------------------------------------------------------------
+- Caught RpcManager.Invoke exceptions due to uncaught ReqrepManager.SendRequest
+===============================================================================
+Revision 9.5.6
+-------------------------------------------------------------------------------
+- NCService could have been memory leaking due to exceptions
+- FuzzyTimer could create excessive timers
+- Added a NAT testing suite
+- Code should use less memory due to better caching
+- Merged ManagedCO and OnDemandCO
+- OnDemand wasn't properly closing
+- Many improvements for the Simulator
+===============================================================================
+Revision 9.5.5
+-------------------------------------------------------------------------------
+- OnDemand will only close a connection if the node created it, the token
+  determines the node that created the connection
+- Fixed a bug in Linux, where resolv.conf had a bad entry, and
+  Dns.GetHostAddresses in IPHandler would block, causing Brunet to not work
+- Disabled testing of DTLS in the simulator
+- Reduced the time in the dump / load dht proxy scripts from 60 to 15
+===============================================================================
+Revision 9.5.4
+-------------------------------------------------------------------------------
+- OnDemand was using a potentially null object in the LinkerEndHandler - could
+  create poorly handled exceptions
+- Removed unused code from RpcManager
+- In AHSender, merged protected readonly with public accessors into public
+  readonly
+- Added an overlay testing suite for hops, drop rate, and latency
+- AHSenders when being used as a return from will return the amount of Hops
+  between the source and destination
+===============================================================================
+Revision 9.5.3
+-------------------------------------------------------------------------------
+- (This was a bug fixed in 9.4.13 but must have been missed in the switch to
+  the new repository) - In UdpEL, unhandled exception, some packets may be too
+  large to fit into the buffer
+===============================================================================
+Revision 9.5.2
+-------------------------------------------------------------------------------
+- Replaced Chota with an OnDemandCO creater, much better for GroupVPN
+- IPOP uses TAAuth so that Brunet doesn't attempt to connect over IPOP
+- Made a TimeBasedCache based upon the work used on DhtAddressResolver
+- Ported the DhtAddressResolver to use this Cache
+- loading and dumping of the Dht could block infinitely, now its based upon a
+  60 second timer, afterwhich point it gives up
+===============================================================================
+Revision 9.5.1
+-------------------------------------------------------------------------------
+- Increased security timeouts to 7.5, 15 minutes
+- Decreased security failure timeouts to 2 minutes
+- Fixed a simulator bug
+- RpcDhtProxy stores values across restarts
+- In Debian, when installing a new GroupVPN, it will restart itself if it is
+  currently running
+- ipop.vpn.config shouldn't be overwritten in Debian any more
+- hostname updating handled when USE_IPOP_HOSTNAME is set
+===============================================================================
+Revision 9.5.0
+-------------------------------------------------------------------------------
+- First version using new Brunet core
+- Xmpp bootstrapping support
+- PathEdgeListeners to support multiplexing of a single EdgeListener across
+  many Nodes
+- Cleaned up BasicNode and its application in inherited classes
+- IP <=> Brunet Address translation more scalable and better handled
+- Rewrote security stack for simplicity
+===============================================================================
+Revision 9.4.13
+-------------------------------------------------------------------------------
+- Throwing an exception in the Send loop of UDP causes a memory leak
+- Check UDP packet size before parsing
+- In UdpEL, unhandled exception, some packets may be too large to fit into the
+  buffer
+===============================================================================
+Revision 9.4.12
+-------------------------------------------------------------------------------
+- In Ubuntu, when performing self-domainname lookup, it performs AAAA
+  searches waaay before performing A searches, this creates significant delay
+  on operations that rely on self-lookups.  This patch assumes that an AAAA
+  search will be happy with an IPv4 address being returned.  The current code
+  cannot handle IPv6 addresses.
+===============================================================================
+Revision 9.4.11
+-------------------------------------------------------------------------------
+- Made Udp Send run in its own loop, in previous code, the Udp was blocking
+  causing weird delays in the system and breaking usefulness of IPOP.
+===============================================================================
+Revision 9.4.10
+-------------------------------------------------------------------------------
+- StaticDns is case insensitive
+===============================================================================
+Revision 9.4.9
+-------------------------------------------------------------------------------
+- In UDP, new Edges weren't being notified of their proper address mapping via
+  the remote EdgeListener as soon as they were created, which was preventing
+  NAT traversal.  I guess the same behavior should probably be added to the
+  TCP module, otherwise port forwarding and DMZ will fail for it as well.
+===============================================================================
+Revision 9.4.8
+-------------------------------------------------------------------------------
+- If a proper lc.* certificate is in the certs dir but doesn't match the
+  current node's node id, it won't muck things up
+===============================================================================
+Revision 9.4.7
+-------------------------------------------------------------------------------
+- Fixed a rare bug in Brunet, which would effectively kill the system
+- UdpEL wasn't updating RemoteTAs properly
+===============================================================================
+Revision 9.4.6
+-------------------------------------------------------------------------------
+- Broke Dns configuration in previous release
+===============================================================================
 Revision 9.4.5
 -------------------------------------------------------------------------------
 - Fixed a bug in Local TA Discovery (was broken)
