@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="3.5" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">x86</Platform>
@@ -75,6 +75,7 @@
     <Compile Include="..\src\Brunet\Applications\ConfigurationValidator.cs" />
     <Compile Include="..\src\Brunet\Applications\IPAddresses.cs" />
     <Compile Include="..\src\Brunet\Applications\Information.cs" />
+    <Compile Include="..\src\Brunet\Applications\LogManager.cs" />
     <Compile Include="..\src\Brunet\Applications\MultiNode.cs" />
     <Compile Include="..\src\Brunet\Applications\NodeConfig.cs" />
     <Compile Include="..\src\Brunet\Applications\OSDependent.cs" />
@@ -107,14 +108,12 @@
     <Compile Include="..\src\Brunet\Connections\ConnectToMessage.cs" />
     <Compile Include="..\src\Brunet\Connections\Connection.cs" />
     <Compile Include="..\src\Brunet\Connections\ConnectionEventArgs.cs" />
-    <Compile Include="..\src\Brunet\Connections\ConnectionLockManager.cs" />
     <Compile Include="..\src\Brunet\Connections\ConnectionOverlord.cs" />
     <Compile Include="..\src\Brunet\Connections\ConnectionPacketHandler.cs" />
     <Compile Include="..\src\Brunet\Connections\ConnectionTable.cs" />
     <Compile Include="..\src\Brunet\Connections\Connector.cs" />
     <Compile Include="..\src\Brunet\Connections\CtmRequestHandler.cs" />
     <Compile Include="..\src\Brunet\Connections\ErrorMessage.cs" />
-    <Compile Include="..\src\Brunet\Connections\ILinkLocker.cs" />
     <Compile Include="..\src\Brunet\Connections\IEdgeReplacementPolicy.cs" />
     <Compile Include="..\src\Brunet\Connections\LinkException.cs" />
     <Compile Include="..\src\Brunet\Connections\LinkMessage.cs" />
@@ -128,6 +127,7 @@
     <Compile Include="..\src\Brunet\Messaging\BrunetRpc.cs" />
     <Compile Include="..\src\Brunet\Messaging\EchoHandler.cs" />
     <Compile Include="..\src\Brunet\Messaging\Filter.cs" />
+    <Compile Include="..\src\Brunet\Messaging\FragmentingSender.cs" />
     <Compile Include="..\src\Brunet\Messaging\IPHandler.cs" />
     <Compile Include="..\src\Brunet\Messaging\IReplyHandler.cs" />
     <Compile Include="..\src\Brunet\Messaging\ISender.cs" />
@@ -141,6 +141,7 @@
     <Compile Include="..\src\Brunet\Relay\OverlapConnectionOverlord.cs" />
     <Compile Include="..\src\Brunet\Relay\RelayEdge.cs" />
     <Compile Include="..\src\Brunet\Relay\RelayEdgeListener.cs" />
+    <Compile Include="..\src\Brunet\Relay\RelayERPolicy.cs" />
     <Compile Include="..\src\Brunet\Relay\RelayOverlap.cs" />
     <Compile Include="..\src\Brunet\Relay\RelayTransportAddress.cs" />
     <Compile Include="..\src\Brunet\Xmpp\XmppDiscovery.cs" />
@@ -154,7 +155,8 @@
     <Compile Include="..\src\Brunet\Util\Base32.cs" />
     <Compile Include="..\src\Brunet\Util\BigInteger.cs" />
     <Compile Include="..\src\Brunet\Util\BufferAllocator.cs" />
-    <Compile Include="Delegates.cs" />
+    <Compile Include="..\src\Brunet\Util\Crc32.cs" />
+    <Compile Include="..\src\Brunet\Util\EventBooleanSwitch.cs" />
     <Compile Include="..\src\Brunet\Util\FuzzyTimer.cs" />
     <Compile Include="..\src\Brunet\Util\ICopyable.cs" />
     <Compile Include="..\src\Brunet\Util\Log.cs" />
