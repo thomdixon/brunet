@@ -115,6 +115,14 @@ namespace Brunet.Security.PeerSec.Symphony {
         if(sa.State == SecurityAssociation.States.Active ||
             sa.State == SecurityAssociation.States.Updating)
         {
+          Address addr = con.Address;
+          if(_address_to_sender.ContainsKey(addr)) {
+            SecurityAssociation to_fixup = _address_to_sender[addr] as SecurityAssociation;
+            if(to_fixup != null && to_fixup != sa) {
+              to_fixup.StateChangeEvent -= SAStateChange;
+              _registered.Remove(to_fixup);
+            }
+          }
           AddConnection(con.Address, sa);
           ready = true;
         }
@@ -148,8 +156,10 @@ namespace Brunet.Security.PeerSec.Symphony {
         AddConnection(addr, sa);
       } else if(state == SecurityAssociation.States.Closed) {
         lock(_address_to_sender) {
-          RemoveConnection(addr, sa);
           _registered.Remove(sa);
+          if(_address_to_sender.ContainsKey(addr) && _address_to_sender[addr] == sa) {
+            RemoveConnection(addr);
+          }
         }
       }
     }
