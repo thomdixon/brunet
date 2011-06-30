@@ -33,6 +33,7 @@ namespace Brunet.Services {
   /// <summary>Provides a wrapper around sender objects, obtaining Edges if
   /// available, otherwise overlay senders.</summary>
   public class ConnectionHandler : SimpleSource, IDataHandler {
+    protected readonly Dictionary<Connection, ConSenderWrapper> _con_to_csw;
     protected readonly Dictionary<Address, ISender> _address_to_sender;
     protected readonly Dictionary<ISender, Address> _sender_to_address;
     protected readonly StructuredNode _node;
@@ -45,6 +46,25 @@ namespace Brunet.Services {
     };
     public delegate void ConnectionEvent(Address addr, ConnectionState cs);
     public event ConnectionEvent ConnectionReady;
+    
+    protected class ConSenderWrapper : ISender {
+      public readonly Connection Con;
+
+      public ConSenderWrapper(Connection con)
+      {
+        Con = con;
+      }
+
+      public void Send(ICopyable data)
+      {
+        Con.State.Edge.Send(data);
+      }
+
+      public string ToUri()
+      {
+        throw new NotImplementedException();
+      }
+    }
 
     public ConnectionHandler(PType ptype, StructuredNode node)
     {
@@ -55,6 +75,7 @@ namespace Brunet.Services {
       _ptype_mb = ptype.ToMemBlock();
       _address_to_sender = new Dictionary<Address, ISender>();
       _sender_to_address = new Dictionary<ISender, Address>();
+      _con_to_csw = new Dictionary<Connection, ConSenderWrapper>();
 
       node.GetTypeSource(_ptype).Subscribe(this, null);
       node.ConnectionTable.ConnectionEvent += HandleConnection;
@@ -158,25 +179,30 @@ namespace Brunet.Services {
         sender = null;
         return false;
       }
-      AddConnection(con.Address, con);
-      sender = con;
+
+      sender = new ConSenderWrapper(con);
+      AddConnection(con.Address, sender);
       return true;
     }
 
     virtual protected void ValidConnection(Connection con)
     {
-      AddConnection(con.Address, con);
+      AddConnection(con.Address, new ConSenderWrapper(con));
     }
   
     virtual protected void ValidDisconnection(Connection con)
     {
-      RemoveConnection(con.Address, con);
+      RemoveConnection(con.Address);
     }
 
     /// <summary>Add to the dictionaries!</summary>
     protected void AddConnection(Address addr, ISender sender)
     {
       lock(_address_to_sender) {
+        if(_address_to_sender.ContainsKey(addr)) {
+          ISender to_remove = _address_to_sender[addr];
+          _sender_to_address.Remove(to_remove);
+        }
         _address_to_sender[addr] = sender;
         _sender_to_address[sender] = addr;
       }
@@ -224,11 +250,14 @@ namespace Brunet.Services {
     }
 
     ///<summary>Lost an edge, remove it from our connections</summary>
-    protected void RemoveConnection(Address addr, ISender sender)
+    protected void RemoveConnection(Address addr)
     {
       lock(_address_to_sender) {
+        if(!_address_to_sender.ContainsKey(addr)) {
+          return;
+        }
+        _sender_to_address.Remove(_address_to_sender[addr]);
         _address_to_sender.Remove(addr);
-        _sender_to_address.Remove(sender);
       }
       var ce = ConnectionReady;
       if(ce != null) {
