@@ -33,7 +33,6 @@ using System.Collections;
 using System.Collections.Generic;
 using BU = Brunet.Util;
 using Brunet.Collections;
-using Brunet.Concurrent;
 
 namespace Brunet.Transport {
 
@@ -647,19 +646,20 @@ public class LinuxNatHandler : SymmetricNatHandler {
  */
 public class NatTAs : IEnumerable {
 
-  public readonly WriteOnce<NatHandler> NatHand;
-
   protected readonly NatHistory _hist;
   protected ArrayList _list_of_remote_ips;
   protected readonly IEnumerable _local_config;
   protected IEnumerable _generated_ta_list;
+  protected string _nat_type;
+  
+  public string NatType { get { return _nat_type; } }
 
   /**
    * @param local_config_tas the list of TAs to use as last resort
    * @param NatHistory history information learned from talking to peers (may be null)
    */
   public NatTAs(IEnumerable local_config_tas, NatHistory hist) {
-    NatHand = new WriteOnce<NatHandler>();
+    _nat_type = string.Empty;
     _hist = hist;
     _local_config = local_config_tas;
   }
@@ -703,11 +703,9 @@ public class NatTAs : IEnumerable {
     return rips;
   }
 
-  protected Pair<ArrayList,NatHandler> GenerateTAs() {
+  protected ArrayList GenerateTAs() {
     ArrayList gtas = new ArrayList();
     Hashtable ht = new Hashtable();
-    NatHandler hand = null;
-
     if( _hist != null ) {
       /*
        * we go through the list from most likely to least likely:
@@ -721,7 +719,7 @@ public class NatTAs : IEnumerable {
         IEnumerator hand_it = NatTAs.AllHandlers();
         bool yielded = false;
         while( hand_it.MoveNext() && (false == yielded) ) {
-          hand = (NatHandler)hand_it.Current;
+          NatHandler hand = (NatHandler)hand_it.Current;
           if( hand.IsMyType( points ) ) {
             if(BU.ProtocolLog.NatHandler.Enabled)
               BU.ProtocolLog.Write(BU.ProtocolLog.NatHandler, String.Format(
@@ -735,6 +733,7 @@ public class NatTAs : IEnumerable {
             }
             //Break out of the while loop, we found the handler.
             yielded = true;
+            _nat_type = hand.GetType().ToString();
           }
         }
       }
@@ -755,7 +754,7 @@ public class NatTAs : IEnumerable {
         i++;
       }
     }
-    return new Pair<ArrayList, NatHandler>(gtas, hand);
+    return gtas;
   }
 
   /**
@@ -769,9 +768,7 @@ public class NatTAs : IEnumerable {
     }
     else {
       //This happens if _generated_ta_list is not yet generated
-      Pair<ArrayList, NatHandler> _pair = GenerateTAs();
-      IEnumerable gtas = _pair.First;
-      NatHand.Value = _pair.Second;
+      IEnumerable gtas = GenerateTAs();
       Interlocked.Exchange<IEnumerable>(ref _generated_ta_list, gtas); 
       return gtas.GetEnumerator();
     }
