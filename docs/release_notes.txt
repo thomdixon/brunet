@@ -1,8 +1,10 @@
 ===============================================================================
 Revision 9.6.0
 -------------------------------------------------------------------------------
+- Wasn't properly handling missed IPs in DhtIpop
 - New connection establishment code helps with better NAT traversal
 - Incompatible with 9.5 branch
+- Includes updated (untested) SocialVPN
 ===============================================================================
 Revision 9.5.20
 -------------------------------------------------------------------------------

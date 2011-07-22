@@ -82,11 +82,15 @@ namespace Ipop.Dht {
     {
       Address stored_addr;
       bool update;
+
       bool contains = _verified_cache.TryGetValue(ip, out stored_addr, out update);
       if(!contains) {
         contains = _incoming_cache.TryGetValue(ip, out stored_addr, out update);
-        _incoming_cache.Update(ip, stored_addr);
         update = true;
+      }
+
+      if(contains) {
+        _incoming_cache.Update(ip, stored_addr);
       }
 
       if(update) {
