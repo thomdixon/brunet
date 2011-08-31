@@ -280,28 +280,6 @@ namespace Brunet.Connections
         lm_resp = new LinkMessage(lm.ConTypeString, n_info, remote_info , _node.Realm, lm.Token);
       }
       else {
-        if( err.Ec == ErrorMessage.ErrorCode.AlreadyConnected ) {
-          /**
-           * When we send the ErrorCode.AlreadyConnected,
-           * we could have a stale connection, lets try pinging
-           * the other node, if they are there, but have lost
-           * the Edge, this may trigger the edge to close, causing
-           * us to remove the Connection.
-           * @todo consider putting this address on a "fast track"
-           * to removal if we don't hear from it soon
-           */
-          ConnectionTable tab = _node.ConnectionTable;
-          Connection c = tab.GetConnection( lm.ConnectionType,
-                                             lm.Local.Address );
-          if( c != null ) {
-            RpcManager rpc = _node.Rpc;
-            //This can throw, but it won't cause any failure since
-            //this is only called when the connection attempt already failed.
-            rpc.Invoke(c.State.Edge, null, "sys:link.Ping", String.Empty);
-          }
-        }
-      }
-      if( err != null ) {
         throw new AdrException((int)err.Ec, err.Message);
       }
       if(ProtocolLog.LinkDebug.Enabled)
@@ -335,7 +313,7 @@ namespace Brunet.Connections
 
       if(ProtocolLog.LinkDebug.Enabled) {
         ProtocolLog.Write(ProtocolLog.LinkDebug, String.Format(
-          "{0} -start- sys:link.GetStatus({1},{2})", _node.Address, sm, edge));
+          "{0} -start- sys:link.GetStatus({1},{2})", _node.Address, sm, from));
       }
 
       CphState cphstate = null;
@@ -432,9 +410,6 @@ namespace Brunet.Connections
       Address local_add = _node.Address;
       LinkMessage lm = cph.LM;
       err = null;
-      /* We lock the connection table so it doesn't change between
-       * the call to Contains and the call to Lock
-       */
       if( lm.Realm != _node.Realm ) {
         err = new ErrorMessage(ErrorMessage.ErrorCode.RealmMismatch,
                                "We are not in the same realm");

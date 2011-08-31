@@ -787,14 +787,24 @@ namespace Brunet.Connections
          * A connection to this Address already exists:
          * See about replacement:
          */
+
         ConnectionTableState cts = res.Second;
         Connection old_con = cts.GetConnections(c.MainType)[c.Address];
         ConnectionState old_cs = old_con.State; 
         ConnectionState rep = _erp.GetReplacement(cts, old_con, old_cs, cs);
+
+        ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
+              "Connection exists, considering replacement of {0} with {1}",
+              old_cs, cs));
+
         if( old_cs != rep ) {
           old_con.SetState(rep);
           //The old edge is now unconnected:
           AddUnconnected(old_cs.Edge);
+        } else {
+          ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
+                "Connection exists, did not replace state, maintaining: {0}",
+                old_cs));
         }
         //No ConnectionTableState change, so no need to send an event
         return cea;

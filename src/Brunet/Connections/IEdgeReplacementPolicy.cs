@@ -195,17 +195,17 @@ public class IPIDERPolicy : IEdgeReplacementPolicy {
    */
   protected int GetTcpIdx(ConnectionState cs) {
     var e = cs.Edge;
-    BT.IPTransportAddress rta, lta;
+    BT.IPTransportAddress high, low;
     if( e.IsInbound ) {
-      rta = (BT.IPTransportAddress)e.RemoteTA;
-      lta = (BT.IPTransportAddress)e.LocalTA;
+      high = (BT.IPTransportAddress)e.RemoteTA;
+      low = (BT.IPTransportAddress)e.LocalTA;
     }
     else {
       //Use the other guy:
-      rta = (BT.IPTransportAddress)cs.PeerLinkMessage.Remote.FirstTA;
-      lta = (BT.IPTransportAddress)cs.PeerLinkMessage.Local.FirstTA;
+      low = (BT.IPTransportAddress)cs.PeerLinkMessage.Remote.FirstTA;
+      high = (BT.IPTransportAddress)cs.PeerLinkMessage.Local.FirstTA;
     }
-    return (rta.Port << 16) | lta.Port;
+    return (high.Port << 16) | low.Port;
   }
   public ConnectionState GetReplacement(ConnectionTableState cts,
                                  Connection c, ConnectionState c1,
