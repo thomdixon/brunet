@@ -791,11 +791,12 @@ namespace Brunet.Connections
         ConnectionTableState cts = res.Second;
         Connection old_con = cts.GetConnections(c.MainType)[c.Address];
         ConnectionState old_cs = old_con.State; 
-        ConnectionState rep = _erp.GetReplacement(cts, old_con, old_cs, cs);
 
         ProtocolLog.WriteIf(ProtocolLog.Connections, String.Format(
               "Connection exists, considering replacement of {0} with {1}",
               old_cs, cs));
+
+        ConnectionState rep = _erp.GetReplacement(cts, old_con, old_cs, cs);
 
         if( old_cs != rep ) {
           old_con.SetState(rep);

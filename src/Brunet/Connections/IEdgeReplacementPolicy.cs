@@ -21,6 +21,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+using System;
+using Brunet.Util;
 using BT = Brunet.Transport;
 using SCG = System.Collections.Generic;
 
@@ -51,16 +53,21 @@ public class NeverReplacePolicy : IEdgeReplacementPolicy {
   }
 }
 
-public class TypeComparer : SCG.IComparer<System.Type> {
-  protected readonly SCG.List<System.Type> _ordering;
-  public TypeComparer(params System.Type[] ord) {
-    _ordering = new SCG.List<System.Type>(ord);
+public class TypeComparer : SCG.IComparer<BT.TransportAddress.TAType> {
+  protected readonly SCG.Dictionary<BT.TransportAddress.TAType, int> _ordering;
+
+  public TypeComparer(params BT.TransportAddress.TAType[] ord) {
+    _ordering = new SCG.Dictionary<BT.TransportAddress.TAType, int>(ord.Length);
+    for(int i = 0; i < ord.Length; i++) {
+      _ordering[ord[i]] = i;
+    }
   }
-  public int Compare(System.Type t1, System.Type t2) {
-    int idx1 = _ordering.IndexOf(t1);
-    int idx2 = _ordering.IndexOf(t2);
-    if( idx1 != -1 ) {
-      if( idx2 != -1 ) {
+
+  public int Compare(BT.TransportAddress.TAType t1, BT.TransportAddress.TAType t2) {
+    int idx1 = -1;
+    int idx2 = -1;
+    if( _ordering.TryGetValue(t1, out idx1) ) {
+      if( _ordering.TryGetValue(t2, out idx2) ) {
         return idx1.CompareTo(idx2);
       }
       else {
@@ -68,7 +75,7 @@ public class TypeComparer : SCG.IComparer<System.Type> {
         return -1;
       }
     }
-    else if( idx2 != -1 ) {
+    else if( _ordering.TryGetValue(t2, out idx2) ) {
       //We don't know about 1, but we do know 2:
       return 1;
     }
@@ -87,7 +94,7 @@ public class TypeERPolicy : IEdgeReplacementPolicy {
   protected readonly TypeComparer _tc;
 
   public TypeERPolicy(IEdgeReplacementPolicy fallback,
-                      params System.Type[] edge_order) {
+                      params BT.TransportAddress.TAType[] edge_order) {
     if( null == fallback ) {
       throw new System.ArgumentNullException("Fallback can't be null");
     }
@@ -96,11 +103,7 @@ public class TypeERPolicy : IEdgeReplacementPolicy {
   }
   public ConnectionState GetReplacement(ConnectionTableState cts,
                                  Connection c, ConnectionState c1, ConnectionState c2) {
-    var e1 = c1.Edge;
-    System.Type t1 = e1.GetType();
-    var e2 = c2.Edge;
-    System.Type t2 = e2.GetType();
-    int tcmp = _tc.Compare(t1, t2);
+    int tcmp = _tc.Compare(c1.Edge.TAType, c2.Edge.TAType);
     if( tcmp < 0 ) {
       return c1;
     }
@@ -232,9 +235,12 @@ public class IPIDERPolicy : IEdgeReplacementPolicy {
 public class DefaultERPolicy {
 
   public static IEdgeReplacementPolicy Create(Address loc) {
-    return Create(NeverReplacePolicy.Instance, loc, typeof(BT.UdpEdge),typeof(BT.TcpEdge));
+    return Create(NeverReplacePolicy.Instance,
+        loc,
+        BT.TransportAddress.TAType.Udp,
+        BT.TransportAddress.TAType.Tcp);
   }
-  public static IEdgeReplacementPolicy Create(IEdgeReplacementPolicy fallback, Address loc, params System.Type[] edge_order) {
+  public static IEdgeReplacementPolicy Create(IEdgeReplacementPolicy fallback, Address loc, params BT.TransportAddress.TAType[] edge_order) {
     var id = new IPIDERPolicy(fallback);
     var dh = new DownhillERPolicy(id,loc);
     return new TypeERPolicy(dh, edge_order);

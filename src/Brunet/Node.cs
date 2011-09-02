@@ -107,9 +107,12 @@ namespace Brunet
         //The default is pretty good, but add fallback handling of Relay:
         var erp = DefaultERPolicy.Create(Brunet.Relay.RelayERPolicy.Instance,
                                          addr,
-                                           typeof(Brunet.Transport.UdpEdge),
-                                           typeof(Brunet.Transport.TcpEdge),
-                                           typeof(Brunet.Relay.RelayEdge)
+                                         TransportAddress.TAType.S,
+                                         TransportAddress.TAType.SO,
+                                         TransportAddress.TAType.Function,
+                                         TransportAddress.TAType.Udp,
+                                         TransportAddress.TAType.Tcp,
+                                         TransportAddress.TAType.Relay
                                         );
         _connection_table = new ConnectionTable(erp);
         _connection_table.ConnectionEvent += this.ConnectionHandler;
