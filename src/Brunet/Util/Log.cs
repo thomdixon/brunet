@@ -29,7 +29,7 @@ namespace Brunet.Util {
     public static EventBooleanSwitch ConsoleLogEnable =
         new EventBooleanSwitch("ConsoleLogEnable", "Log for unknown!");
     public static EventBooleanSwitch Connections =
-        new EventBooleanSwitch("ConnectionTable", "Logs connections");
+        new EventBooleanSwitch("Connections", "Logs connections");
     public static EventBooleanSwitch ConnectionTableLocks = 
         new EventBooleanSwitch("ConnectionTableLocks", "Logs locks in the ConnectionTable");
     public static EventBooleanSwitch EdgeClose =
