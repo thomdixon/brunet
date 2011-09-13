@@ -26,9 +26,7 @@ src/Brunet/Applications/Examples.
 
 Links
 ===============================================================================
-Brunet -- The P2P library - Site out of date (see IPOP for now)
-- http://boykin.acis.ufl.edu/wiki/index.php/Brunet
-IPOP -- Internet Protocol over Peer-to-Peer
+Brunet -- The P2P library / IPOP -- Internet Protocol over Peer-to-Peer
 - http://www.ipop-project.org
 GroupVPN -- Using groups as a medium to connect IPOP
 - http://www.grid-appliance.org/wiki/index.php/GroupVPN
