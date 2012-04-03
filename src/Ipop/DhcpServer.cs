@@ -145,7 +145,7 @@ namespace Ipop {
       options[DhcpPacket.OptionTypes.DOMAIN_NAME] = Encoding.UTF8.GetBytes(Dns.DomainName);
 //  The following option is needed for dhcp to "succeed" in Vista, but they break Linux
 //    options[DhcpPacket.OptionTypes.ROUTER] = reply.ip;
-      options[DhcpPacket.OptionTypes.DOMAIN_NAME_SERVER] = MemBlock.Reference(ServerIP);
+//      options[DhcpPacket.OptionTypes.DOMAIN_NAME_SERVER] = MemBlock.Reference(ServerIP);
       options[DhcpPacket.OptionTypes.SUBNET_MASK] = MemBlock.Reference(Netmask);
       options[DhcpPacket.OptionTypes.LEASE_TIME] = _lease_time;
       options[DhcpPacket.OptionTypes.MTU] = _mtu;

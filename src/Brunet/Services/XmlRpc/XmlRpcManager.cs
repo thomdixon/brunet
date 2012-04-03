@@ -553,6 +553,7 @@ namespace Brunet.Services.XmlRpc {
       if (_xrm_mappings.Count == 1) {
         // Add an alias for the first node.
         foreach(var pair in _xrm_mappings) {
+          RemotingServices.Disconnect(pair.Value);
           RemotingServices.Marshal(pair.Value, "xm.rem");
           // Since only one pair, break here.
           break;

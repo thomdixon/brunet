@@ -27,6 +27,8 @@ using Brunet.Util;
 using Brunet.Symphony;
 using Brunet.Applications;
 using Brunet.Concurrent;
+using Brunet.Messaging;
+using Brunet.Security;
 using NetworkPackets;
 using NetworkPackets.Dns;
 using System;
@@ -36,6 +38,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Ipop.Managed.Translation;
+using System.Security.Cryptography;
+using Brunet.Security.PeerSec.Symphony;
 
 #if ManagedIpopNodeNUNIT
 using NUnit.Framework;
@@ -51,7 +55,9 @@ namespace Ipop.Managed {
   /// This class implements Dns, IAddressResolver, IManagedHandler, and
   /// ITranslator. It provides most functionality needed by ManagedIpopNode.
   /// </summary>
-  public class ManagedAddressResolverAndDns : Dns, IAddressResolver, ITranslator {
+  public class ManagedAddressResolverAndDns : Dns, IAddressResolver, 
+    ITranslator, IRpcHandler {
+
     public event MappingDelegate MissedMapping;
     protected IProtocolTranslator<UdpPacket>[] _udp_translators;
 
@@ -94,6 +100,12 @@ namespace Ipop.Managed {
     /// <summary>Create a new address resolver</summary>
     protected readonly WriteOnce<IDnsResolver> _resolver;
 
+    protected readonly SymphonySecurityOverlord _sso;
+
+    protected Certificate _cert;
+
+    protected readonly Dictionary<string, string> _addr_fpr;
+
     /// <summary>Setter for address resolver</summary>
     public IDnsResolver Resolver {
       set { _resolver.Value = value; }
@@ -104,7 +116,8 @@ namespace Ipop.Managed {
     /// </summary>
     /// <param name="node">Takes in a structured node</param>
     public ManagedAddressResolverAndDns(StructuredNode node, DhcpServer dhcp,
-        MemBlock local_ip, string name_server, bool forward_queries) :
+        MemBlock local_ip, string name_server, bool forward_queries,
+        SymphonySecurityOverlord sso) :
       base(MemBlock.Reference(dhcp.BaseIP), MemBlock.Reference(dhcp.Netmask),
           name_server, forward_queries)
     {
@@ -127,6 +140,11 @@ namespace Ipop.Managed {
         new SsdpTranslator(local_ip)
       };
       _resolver = new WriteOnce<IDnsResolver>();
+      _sso = sso;
+      _cert = null;
+      _addr_fpr = new Dictionary<string, string>();
+
+      _node.Rpc.AddHandler("svpn", this);
     }
 
     protected void UpdateCounter(Dictionary<Address, int> counters, 
@@ -286,9 +304,9 @@ namespace Ipop.Managed {
         }
         else {
           ip_bytes = MemBlock.Reference(Utils.StringToBytes(ip, '.'));
-          if (!_dhcp.ValidIP(ip_bytes)) {
+          /*if (!_dhcp.ValidIP(ip_bytes)) {
             throw new Exception("Invalid IP");
-          }
+          }*/
         }
 
         if (_ip_addr.ContainsValue(addr) || _addr_ip.ContainsValue(ip_bytes)) {
@@ -344,6 +362,126 @@ namespace Ipop.Managed {
           _dns_ptr.Remove(ip);
         }
       }
+    }
+
+    public void InitCert(RSACryptoServiceProvider rsa) {
+      string country = "US";
+      string version = "0.6";
+      string name = "name";
+      string uid = "uid";
+      string pcid = String.Empty;
+      string address = _node.Address.ToString();
+
+      if(pcid == null || pcid == String.Empty) {
+        pcid = System.Net.Dns.GetHostName();
+      }
+
+      CertificateMaker cm = new CertificateMaker(country, version, pcid,
+                                                 name, uid, rsa, address);
+      _cert = cm.Sign(cm, rsa);
+      //_sso.CertificateHandler.AddCACertificate(_cert.X509);
+      //_sso.CertificateHandler.AddSignedCertificate(_cert.X509);
+    }
+
+    public static string GetSHA1HashString(byte[] data) {
+      SHA1CryptoServiceProvider sha1 = new SHA1CryptoServiceProvider();
+      string hash = BitConverter.ToString(sha1.ComputeHash(data));
+      hash = hash.Replace("-", "");
+      return hash.ToLower();
+    }
+
+    protected void SendRpcMessage(Address addr, string method, 
+      string query, bool secure) {
+
+      MemBlock ip = MemBlock.Reference(Utils.StringToBytes(query, '.'));
+      if ( _addr_ip.ContainsKey(addr) || _ip_addr.ContainsKey(ip)) {
+        return;
+      }
+
+      string meth_call = "svpn." + method; 
+      Channel q = new Channel(); 
+      q.CloseAfterEnqueue();
+      q.CloseEvent += delegate(object obj, EventArgs eargs) { 
+        try { 
+          RpcResult res = (RpcResult) q.Dequeue();
+          if (method == "getcert") {
+            byte[] result = (byte []) res.Result;
+            Certificate cert = new Certificate(result);
+            string fpr = GetSHA1HashString(result);
+            if (_addr_fpr[cert.NodeAddress] == fpr) {
+              _sso.CertificateHandler.AddCACertificate(cert.X509);
+              Console.WriteLine("Adding " + query + " " + cert.NodeAddress);
+              //AddIPMapping(query, AddressParser.Parse(cert.NodeAddress));
+            }
+          }
+        } catch(Exception e) { 
+        }
+      };
+
+      ISender sender;
+      if(!secure) { 
+        sender = new AHExactSender(_node, addr); 
+      }
+      else { 
+        sender = _sso.GetSecureSender(addr); 
+      }
+      _node.Rpc.Invoke(sender, q, meth_call, query); 
+    } 
+
+    public void HandleRpc(ISender caller, string method, IList args, 
+      object req_state) {
+
+      object result = null;
+      string addr = null;
+      string ip = null;
+      string fpr = null;
+
+      try {
+        switch(method) {
+          case "addip":
+            addr = (string)args[1];
+            if (!addr.StartsWith("brunet:node:")) {
+              addr = "brunet:node:" + addr;
+            }
+            Address address = AddressParser.Parse(addr);
+            ip = (string)args[0];
+            fpr = (string)args[2];
+            _addr_fpr[addr] = fpr;
+            //SendRpcMessage(address, "getcert", ip, false);
+            AddIPMapping(ip, address);
+            result = "pending";
+            break;
+
+          case "removeip":
+            RemoveIPMapping((string)args[0]);
+            result = "success";
+            break;
+
+          case "getaddress":
+            ip = Utils.MemBlockToString(_local_ip, '.');
+            fpr = GetSHA1HashString(_cert.X509.RawData);
+            addr = _node.Address.ToString().Substring(12);
+            result = ip + " " + addr + " " + fpr;
+            break;
+
+          case "getcert":
+            result = _cert.X509.RawData;
+            break;
+
+          case "kill":
+            Environment.Exit(1);
+            break;
+
+          default:
+            result = "not yet implemented";
+            break;
+        }
+      } catch (Exception e) {
+        result = e;
+      }
+
+      _node.Rpc.SendResult(req_state, result);
+
     }
   }
   

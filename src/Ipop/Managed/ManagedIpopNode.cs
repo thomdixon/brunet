@@ -54,10 +54,14 @@ namespace Ipop.Managed {
       _dhcp_config = _dhcp_server.Config;
       _marad = new ManagedAddressResolverAndDns(AppNode.Node, _dhcp_server,
           ((ManagedDhcpServer) _dhcp_server).LocalIP, _ipop_config.Dns.NameServer,
-          _ipop_config.Dns.ForwardQueries);
+          _ipop_config.Dns.ForwardQueries, AppNode.SymphonySecurityOverlord);
       _dns = _marad;
       _address_resolver = _marad;
       _translator = _marad;
+    }
+
+    public ManagedAddressResolverAndDns Marad {
+      get { return _marad; }
     }
 
     protected override DhcpServer GetDhcpServer() {
@@ -100,5 +104,6 @@ namespace Ipop.Managed {
       }
       return true;
     }
+
   }
 }
