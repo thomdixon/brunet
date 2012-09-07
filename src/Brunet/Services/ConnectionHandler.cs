@@ -123,6 +123,8 @@ namespace Brunet.Services {
     {
       Address addr = GetAddress(return_path);
       if(addr == null) {
+        ProtocolLog.WriteIf(ProtocolLog.ConnectionHandlerLog,
+            String.Format("Unable to obtain an address for: {0}", return_path));
         return;
       }
       _ondemand.Set(addr);
@@ -149,6 +151,9 @@ namespace Brunet.Services {
           return true;
         } catch {
         }
+      } else {
+        ProtocolLog.WriteIf(ProtocolLog.ConnectionHandlerLog,
+            String.Format("Unable to a destination for address: {0}", dst));
       }
       return false;
     }

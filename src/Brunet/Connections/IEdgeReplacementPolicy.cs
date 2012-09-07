@@ -186,6 +186,13 @@ public class IPIDERPolicy : IEdgeReplacementPolicy {
  
  protected int GetUdpIdx(ConnectionState cs) {
     var ue = (BT.UdpEdge)cs.Edge;
+    if(ue == null) {
+      BT.PathEdge tmp = (BT.PathEdge)cs.Edge;
+      if(tmp == null) {
+        return 0;
+      }
+      ue = (BT.UdpEdge)tmp.Edge;
+    }
     if( ue.IsInbound ) { return ue.ID; }
     else { return ue.RemoteID; }
   }
@@ -213,13 +220,17 @@ public class IPIDERPolicy : IEdgeReplacementPolicy {
   public ConnectionState GetReplacement(ConnectionTableState cts,
                                  Connection c, ConnectionState c1,
                                                ConnectionState c2) {
-    if( (c1.Edge is BT.UdpEdge) && (c2.Edge is BT.UdpEdge) ) {
+    BT.TransportAddress.TAType c1type = c1.Edge.TAType;
+    BT.TransportAddress.TAType c2type = c2.Edge.TAType;
+    if(c1type != c2type) {
+      return _fallback.GetReplacement(cts, c, c1, c2);
+    }
+
+    if(c1type == BT.TransportAddress.TAType.Udp) {
       return GetUdpIdx(c1) <= GetUdpIdx(c2) ? c1 : c2;
-    }
-    else if( (c1.Edge is BT.TcpEdge) && (c2.Edge is BT.TcpEdge) ) {
+    } else if(c1type == BT.TransportAddress.TAType.Tcp) {
       return GetTcpIdx(c1) <= GetTcpIdx(c2) ? c1 : c2;
-    }
-    else {
+    } else {
       //We don't know how to handle, move on:
       return _fallback.GetReplacement(cts, c, c1, c2);
     }

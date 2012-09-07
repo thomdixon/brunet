@@ -60,6 +60,8 @@ namespace Brunet.Util {
         new EventBooleanSwitch("SecurityExceptions", "Security Handling Exception logging.");
     public static EventBooleanSwitch UdpEdge =
         new EventBooleanSwitch("UdpEdge", "Log for UdpEdge and UdpEdgeListener");
+    public static EventBooleanSwitch ConnectionHandlerLog =
+        new EventBooleanSwitch("ConnectionHandlerLog", "Logging for the ConnectionHandler");
 
     public static bool CTL_enabled = false;
 
