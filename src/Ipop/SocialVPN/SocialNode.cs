@@ -143,9 +143,9 @@ namespace Ipop.SocialVPN {
 
     public void RemoveFriend(string address) {
       SocialUser user = _friends[address];
-      Address addr = AddressParser.Parse(user.Address);
-      _managed_co.Unset(addr);
-      _marad.RemoveIPMapping(user.IP);
+      Address addr = AddressParser.Parse(user.Address);
+      _managed_co.Unset(addr);
+      _marad.RemoveIPMapping(user.IP);
 
       ImmutableDictionary<string, SocialUser> old;
       _friends = _friends.RemoveFromNew(address, out old);
