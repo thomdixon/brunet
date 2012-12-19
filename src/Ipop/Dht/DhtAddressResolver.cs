@@ -156,9 +156,6 @@ namespace Ipop.Dht {
         queue = new Channel(1);
         queue.CloseEvent += MissCallback;
         _mapping[queue] = ip;
-
-        Byte[] ip_ascii = Encoding.ASCII.GetBytes(Utils.MemBlockToString(ip,'.'));
-        _udp_client.Send(ip_ascii, ip_ascii.Length);
       }
 
       String ips = Utils.MemBlockToString(ip, '.');
@@ -218,6 +215,9 @@ namespace Ipop.Dht {
 
         _queued.Remove(ip);
         _mapping.Remove(queue);
+
+        Byte[] ip_ascii = Encoding.ASCII.GetBytes(ips);
+        _udp_client.Send(ip_ascii, ip_ascii.Length);
       }
 
       if (addr == null) {
