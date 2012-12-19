@@ -379,8 +379,8 @@ namespace Ipop.Managed {
       CertificateMaker cm = new CertificateMaker(country, version, pcid,
                                                  name, uid, rsa, address);
       _cert = cm.Sign(cm, rsa);
-      //_sso.CertificateHandler.AddCACertificate(_cert.X509);
-      //_sso.CertificateHandler.AddSignedCertificate(_cert.X509);
+      _sso.CertificateHandler.AddCACertificate(_cert.X509);
+      _sso.CertificateHandler.AddSignedCertificate(_cert.X509);
     }
 
     public static string GetSHA1HashString(byte[] data) {
@@ -409,9 +409,9 @@ namespace Ipop.Managed {
             Certificate cert = new Certificate(result);
             string fpr = GetSHA1HashString(result);
             if (_addr_fpr[cert.NodeAddress] == fpr) {
+              AddIPMapping(query, AddressParser.Parse(cert.NodeAddress));
               _sso.CertificateHandler.AddCACertificate(cert.X509);
               Console.WriteLine("Adding " + query + " " + cert.NodeAddress);
-              //AddIPMapping(query, AddressParser.Parse(cert.NodeAddress));
             }
           }
         } catch(Exception e) { 
@@ -447,8 +447,8 @@ namespace Ipop.Managed {
             ip = (string)args[0];
             fpr = (string)args[2];
             _addr_fpr[addr] = fpr;
-            //SendRpcMessage(address, "getcert", ip, false);
-            AddIPMapping(ip, address);
+            SendRpcMessage(address, "getcert", ip, false);
+            //AddIPMapping(ip, address);
             result = "pending";
             break;
 
