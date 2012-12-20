@@ -304,9 +304,6 @@ namespace Ipop.Managed {
         }
         else {
           ip_bytes = MemBlock.Reference(Utils.StringToBytes(ip, '.'));
-          /*if (!_dhcp.ValidIP(ip_bytes)) {
-            throw new Exception("Invalid IP");
-          }*/
         }
 
         if (_ip_addr.ContainsValue(addr) || _addr_ip.ContainsValue(ip_bytes)) {
@@ -448,7 +445,6 @@ namespace Ipop.Managed {
             fpr = (string)args[2];
             _addr_fpr[addr] = fpr;
             SendRpcMessage(address, "getcert", ip, false);
-            //AddIPMapping(ip, address);
             result = "pending";
             break;
 
