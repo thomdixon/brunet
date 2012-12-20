@@ -408,7 +408,6 @@ namespace Ipop.Managed {
             if (_addr_fpr[cert.NodeAddress] == fpr) {
               AddIPMapping(query, AddressParser.Parse(cert.NodeAddress));
               _sso.CertificateHandler.AddCACertificate(cert.X509);
-              Console.WriteLine("Adding " + query + " " + cert.NodeAddress);
             }
           }
         } catch(Exception e) { 
@@ -475,9 +474,7 @@ namespace Ipop.Managed {
       } catch (Exception e) {
         result = e;
       }
-
       _node.Rpc.SendResult(req_state, result);
-
     }
   }
   
