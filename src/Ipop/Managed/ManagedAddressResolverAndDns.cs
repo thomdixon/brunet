@@ -40,6 +40,7 @@ using System.Text;
 using Ipop.Managed.Translation;
 using System.Security.Cryptography;
 using Brunet.Security.PeerSec.Symphony;
+using Brunet.Services;
 
 #if ManagedIpopNodeNUNIT
 using NUnit.Framework;
@@ -102,6 +103,8 @@ namespace Ipop.Managed {
 
     protected readonly SymphonySecurityOverlord _sso;
 
+    protected readonly ConnectionHandler _conn_handler;
+
     protected Certificate _cert;
 
     protected readonly Dictionary<string, string> _addr_fpr;
@@ -117,7 +120,7 @@ namespace Ipop.Managed {
     /// <param name="node">Takes in a structured node</param>
     public ManagedAddressResolverAndDns(StructuredNode node, DhcpServer dhcp,
         MemBlock local_ip, string name_server, bool forward_queries,
-        SymphonySecurityOverlord sso) :
+        SymphonySecurityOverlord sso, ConnectionHandler conn_handler) :
       base(MemBlock.Reference(dhcp.BaseIP), MemBlock.Reference(dhcp.Netmask),
           name_server, forward_queries)
     {
@@ -141,6 +144,7 @@ namespace Ipop.Managed {
       };
       _resolver = new WriteOnce<IDnsResolver>();
       _sso = sso;
+      _conn_handler = conn_handler;
       _cert = null;
       _addr_fpr = new Dictionary<string, string>();
 
@@ -422,33 +426,54 @@ namespace Ipop.Managed {
         sender = _sso.GetSecureSender(addr); 
       }
       _node.Rpc.Invoke(sender, q, meth_call, query); 
-    } 
+    }
 
     public void HandleRpc(ISender caller, string method, IList args, 
       object req_state) {
 
       object result = null;
+
+      try {
+        switch(method) {
+
+          case "getcert":
+            result = _cert.X509.RawData;
+            break;
+
+          default:
+            result = new Exception("Invalid method!");
+            break;
+        }
+      } catch (Exception e) {
+        result = e;
+      }
+      _node.Rpc.SendResult(req_state, result);
+    }
+
+    public string HandleRequest(string[] args) {
+      string method = args[0].Substring(5);
       string addr = null;
       string ip = null;
       string fpr = null;
+      string result = null;
 
       try {
         switch(method) {
           case "addip":
-            addr = (string)args[1];
+            addr = args[2];
             if (!addr.StartsWith("brunet:node:")) {
               addr = "brunet:node:" + addr;
             }
             Address address = AddressParser.Parse(addr);
-            ip = (string)args[0];
-            fpr = (string)args[2];
+            ip = args[1];
+            fpr = args[3];
             _addr_fpr[addr] = fpr;
             SendRpcMessage(address, "getcert", ip, false);
-            result = "pending";
+            result = _conn_handler.ContainsAddress(address).ToString();
             break;
 
           case "removeip":
-            RemoveIPMapping((string)args[0]);
+            RemoveIPMapping(args[1]);
             result = "success";
             break;
 
@@ -459,23 +484,16 @@ namespace Ipop.Managed {
             result = ip + " " + addr + " " + fpr;
             break;
 
-          case "getcert":
-            result = _cert.X509.RawData;
-            break;
-
-          case "kill":
-            Environment.Exit(1);
-            break;
-
           default:
             result = "not yet implemented";
             break;
         }
       } catch (Exception e) {
-        result = e;
+        result = e.ToString();
       }
-      _node.Rpc.SendResult(req_state, result);
+      return result;
     }
+
   }
   
 }

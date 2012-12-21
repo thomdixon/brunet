@@ -24,10 +24,11 @@ THE SOFTWARE.
 
 using System;
 using System.IO;
+using System.Threading;
+using System.Security.Cryptography;
 using Brunet;
 using Brunet.Util;
 using Brunet.Applications;
-using System.Security.Cryptography;
 using Brunet.Security.PeerSec.Symphony;
 
 namespace Ipop.Managed {
@@ -61,7 +62,17 @@ namespace Ipop.Managed {
 
       ManagedIpopNode node = new ManagedIpopNode(node_config, ipop_config);
       node.Marad.InitCert(rsa);
-      node.Run();
+      Thread nodeThread = new Thread(new ThreadStart(node.Run));
+      nodeThread.Start();
+
+      while (true) {
+        string input = Console.ReadLine();
+        if (input.StartsWith("svpn.")) {
+          string[] inputs = input.Trim().Split(' ');
+          string result = node.Marad.HandleRequest(inputs);
+          Console.WriteLine("svpn: " + result);
+        }
+      }
     }
 
   }
