@@ -465,15 +465,20 @@ namespace Ipop.Managed {
               addr = "brunet:node:" + addr;
             }
             Address address = AddressParser.Parse(addr);
-            ip = args[1];
-            fpr = args[3];
-            _addr_fpr[addr] = fpr;
-            SendRpcMessage(address, "getcert", ip, false);
+
+            if (!_addr_ip.ContainsKey(address)) {
+              ip = args[1];
+              fpr = args[3];
+              _addr_fpr[addr] = fpr;
+              SendRpcMessage(address, "getcert", ip, false);
+              _conn_handler.ConnectTo(address);
+            }
             result = _conn_handler.ContainsAddress(address).ToString();
             break;
 
           case "removeip":
-            RemoveIPMapping(args[1]);
+            ip = args[1];
+            RemoveIPMapping(ip);
             result = "success";
             break;
 
