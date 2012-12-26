@@ -410,7 +410,8 @@ namespace Ipop.Managed {
             Certificate cert = new Certificate(result);
             string fpr = GetSHA1HashString(result);
             if (_addr_fpr[cert.NodeAddress] == fpr) {
-              AddIPMapping(query, AddressParser.Parse(cert.NodeAddress));
+              _conn_handler.ConnectTo(addr);
+              AddIPMapping(query, addr);
               _sso.CertificateHandler.AddCACertificate(cert.X509);
             }
           }
@@ -465,20 +466,15 @@ namespace Ipop.Managed {
               addr = "brunet:node:" + addr;
             }
             Address address = AddressParser.Parse(addr);
-
-            if (!_addr_ip.ContainsKey(address)) {
-              ip = args[1];
-              fpr = args[3];
-              _addr_fpr[addr] = fpr;
-              SendRpcMessage(address, "getcert", ip, false);
-              _conn_handler.ConnectTo(address);
-            }
+            ip = args[1];
+            fpr = args[3];
+            _addr_fpr[addr] = fpr;
+            SendRpcMessage(address, "getcert", ip, false);
             result = _conn_handler.ContainsAddress(address).ToString();
             break;
 
           case "removeip":
-            ip = args[1];
-            RemoveIPMapping(ip);
+            RemoveIPMapping(args[1]);
             result = "success";
             break;
 
