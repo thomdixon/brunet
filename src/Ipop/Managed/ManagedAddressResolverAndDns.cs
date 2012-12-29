@@ -415,8 +415,7 @@ namespace Ipop.Managed {
               _sso.CertificateHandler.AddCACertificate(cert.X509);
             }
           }
-        } catch(Exception e) { 
-        }
+        } catch(Exception e) {}
       };
 
       ISender sender;

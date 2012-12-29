@@ -29,6 +29,9 @@ using System;
 using System.Collections;
 using System.Net;
 using System.Threading;
+using System.IO;
+using System.Security.Cryptography;
+using Brunet.Security.PeerSec.Symphony;
 
 /**
 \namespace Ipop::Managed
@@ -102,6 +105,46 @@ namespace Ipop.Managed {
         SendIP(addr, ipp.Packet);
       }
       return true;
+    }
+
+    public static void Main(string[] args) {
+      NodeConfig node_config = Utils.ReadConfig<NodeConfig>("brunet.config");
+      IpopConfig ipop_config = Utils.ReadConfig<IpopConfig>("ipop.config");
+
+      RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
+      if(!File.Exists(node_config.Security.KeyPath) ||
+        node_config.NodeAddress == null) {
+        node_config.NodeAddress = Utils.GenerateAHAddress().ToString();
+        Utils.WriteConfig("brunet.config", node_config);
+
+        byte[] data = rsa.ExportCspBlob(true);
+        FileStream file = File.Open(node_config.Security.KeyPath, FileMode.Create);
+        file.Write(data, 0, data.Length);
+        file.Close();
+
+      }
+      else if(File.Exists(node_config.Security.KeyPath)) {
+        FileStream file = File.Open(node_config.Security.KeyPath, FileMode.Open);
+        byte[] blob = new byte[file.Length];
+        file.Read(blob, 0, (int)file.Length);
+        file.Close();
+
+        rsa.ImportCspBlob(blob);
+      }
+
+      ManagedIpopNode node = new ManagedIpopNode(node_config, ipop_config);
+      node.Marad.InitCert(rsa);
+      Thread nodeThread = new Thread(new ThreadStart(node.Run));
+      nodeThread.Start();
+
+      while (true) {
+        string input = Console.ReadLine();
+        if (input.StartsWith("svpn.")) {
+          string[] inputs = input.Trim().Split(' ');
+          string result = node.Marad.HandleRequest(inputs);
+          Console.WriteLine("svpn: " + result);
+        }
+      }
     }
 
   }
