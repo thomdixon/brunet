@@ -484,6 +484,10 @@ namespace Ipop.Managed {
             result = ip + " " + addr + " " + fpr;
             break;
 
+          case "kill":
+            Environment.Exit(1);
+            break;
+
           default:
             result = "not yet implemented";
             break;
