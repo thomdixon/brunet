@@ -69,6 +69,11 @@
         <include name="Ipop.Managed.dll" />
       </fileset>
     </copy>
+    <copy todir="${bin.dir}" failonerror="true">
+      <fileset basedir="${build.dir}">
+        <include name="Ipop.Managed.exe" />
+      </fileset>
+    </copy>
   </target>
 
   <target name="test" description="Test Ipop.Managed">
