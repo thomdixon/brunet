@@ -42,6 +42,10 @@ namespace Ipop.Managed {
   /// This class is a subclass of IpopNode
   /// </summary>
   public class ManagedIpopNode: IpopNode {
+
+    public const string BRUNET_CONFIG = "brunet.svpn.config";
+    public const string IPOP_CONFIG = "ipop.svpn.config";
+
     /// <summary>Provides Address resolution, dns, and translation.</summary>
     protected ManagedAddressResolverAndDns _marad;
 
@@ -108,14 +112,14 @@ namespace Ipop.Managed {
     }
 
     public static void Main(string[] args) {
-      NodeConfig node_config = Utils.ReadConfig<NodeConfig>("brunet.config");
-      IpopConfig ipop_config = Utils.ReadConfig<IpopConfig>("ipop.config");
+      NodeConfig node_config = Utils.ReadConfig<NodeConfig>(BRUNET_CONFIG);
+      IpopConfig ipop_config = Utils.ReadConfig<IpopConfig>(IPOP_CONFIG);
 
       RSACryptoServiceProvider rsa = new RSACryptoServiceProvider();
       if(!File.Exists(node_config.Security.KeyPath) ||
         node_config.NodeAddress == null) {
         node_config.NodeAddress = Utils.GenerateAHAddress().ToString();
-        Utils.WriteConfig("brunet.config", node_config);
+        Utils.WriteConfig(BRUNET_CONFIG, node_config);
 
         byte[] data = rsa.ExportCspBlob(true);
         FileStream file = File.Open(node_config.Security.KeyPath, FileMode.Create);

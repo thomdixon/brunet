@@ -4,6 +4,7 @@
   <property name="root" value="../../.." />
   <property name="lib.dir" value="${root}/lib"/>
   <property name="bin.dir" value="${root}/bin"/>
+  <property name="config.dir" value="${root}/config"/>
   <property name="build.dir" value="build" />
 
   <target name="clean" description="Remove build directory">
@@ -54,6 +55,13 @@
         <include name="System.Runtime.Remoting.dll"/>
       </references>
     </csc>
+
+    <copy todir="${build.dir}" failonerror="true">
+      <fileset basedir="${config.dir}">
+        <include name="brunet.svpn.config" />
+        <include name="ipop.svpn.config" />
+      </fileset>
+    </copy>
 
     <mkdir dir="${lib.dir}" failonerror="true"/>
     <copy todir="${lib.dir}" failonerror="true">
