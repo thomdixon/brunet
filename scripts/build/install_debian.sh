@@ -40,7 +40,9 @@ ln -sf ../../opt/ipop/bin/groupvpn_prepare.sh .
 cd - &> /dev/null
 cd $PACKAGE_DIR/etc/init.d
 ln -sf ../../opt/ipop/bin/groupvpn.sh .
+ln -sf groupvpn.sh groupvpn
 ln -sf ../../opt/ipop/bin/groupvpn_bootstrap.sh .
+ln -sf groupvpn_bootstrap.sh groupvpn_bootstrap
 cd - &> /dev/null
 cd $PACKAGE_DIR/etc
 ln -sf ../opt/ipop/etc/ipop.vpn.config .
