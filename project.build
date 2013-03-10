@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
  
 <project name="Brunet" default="build">
+  <property name="nant.settings.currentframework" value="mono-2.0"/>
   <property name="build.dir" value="${nant.project.basedir}/build"/>
   <property name="lib.dir" value="${nant.project.basedir}/lib"/>
   <property name="assembly" value="Brunet"/>
